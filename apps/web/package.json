@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node ../../scripts/dev.js",
-    "next:dev": "next dev",
-    "build": "next build && mkdir -p apps/web && cp -r .next apps/web/.next",
+    "build": "next build && rm -rf apps/web && mkdir -p apps/web/.next apps/web/apps/web/.next && cp -a .next/. apps/web/.next/ && cp -a .next/. apps/web/apps/web/.next/",
     "start": "next start",
     "lint": "eslint"
   },
