@@ -6,7 +6,7 @@ A production-grade, voice-first heritage language learning and dictionary platfo
 
 ## 🌟 Key Features
 
-1. **Deduplicated Canonical Dictionary**:
+1. **Deduplicated Learn Mode (Visual Concept Cards)**:
    - **396 Unified Flashcard Concepts** across 20 pedagogical categories (Body Parts, Family & Relations, House & Objects, Kitchen & Vessels, etc.).
    - Multi-dialect support: Single unified concept cards for shared words (e.g., Head, Eye, Mother, Father) featuring both Badaga and Marwari native audio samples.
    - Distinct language filtering: Filter to 285 Badaga words or 214 Marwari words with one click.
@@ -18,12 +18,14 @@ A production-grade, voice-first heritage language learning and dictionary platfo
    - Tamil and English audio pronunciation buttons.
    - Native audio streaming directly from edge CDN (`/audio/*.wav`).
 
-3. **Ground-Truth AI Tutor**:
-   - Pure VectorDB grounding (Milvus / Qdrant) with secondary LLM fallback (Groq LLaMA 3.3 / Google Gemini).
-   - Zero hallucination: Strictly answers within verified vocabulary.
-
-4. **Adaptive Quiz Practice**:
-   - Real-time quiz generation with dynamic distractors and audio listening exercises.
+3. **KURINJI Multimodal Speech AI Tutor**:
+   - Closed-vocabulary voice recognition and verified meaning retrieval for Badaga and Marwari.
+   - Dual Input Modes:
+     - **Type / Speak**: Romanised transliteration search (e.g. `thale`, `kannu`, `pal`, `mandhe`, `aankh`, `daant`) with live speech dictation (`en-IN`) and quick suggestion chips.
+     - **Audio File / Waveform**: Genuine 16-bit 16kHz PCM WAV recording & file upload with real-time waveform timing.
+   - AI Engine: Google Gemini Multimodal Audio understanding constrained strictly to the 3,318-word verified dictionary for zero hallucination.
+   - Verified Output: Displays authentic Tamil & English translations, Google Neural TTS audio buttons, authentic native hill-speaker reference recordings, and match quality.
+   - Wordbank Management: Interactive dictionary browser with live search and "Add Verified Word" submission.
 
 ---
 
@@ -93,7 +95,7 @@ node scripts/dev.js
 │   └── web/                     # Next.js 16 web application (TypeScript, Tailwind CSS)
 │       ├── app/                 # Next.js App Router & Serverless API Routes
 │       │   ├── api/v1/          # Built-in Edge/Serverless Route Handlers
-│       │   └── page.tsx         # Main interactive UI (Tutor, Dictionary, Quiz)
+│       │   └── page.tsx         # Main interactive UI (AI Tutor, Learn Mode)
 │       └── public/
 │           ├── audio/           # 619 Native WAV audio recordings
 │           ├── vocab-images/    # 396 Photographic flashcards

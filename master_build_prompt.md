@@ -159,10 +159,10 @@ Use pinned dependency versions and maintain a lockfile.
                                                        | (HTTP / SSE / WebSockets)
                                                        v
                             +-------------------------------------------------------+
-                            |     NEXT.JS 15 FRONTEND (Light Theme, Black Buttons)   |
-                            |  [AI Tutor Tab]   [Dictionary Tab]   [Quiz Tab]       |
-                            |  WebAudio VAD     2,362 Canonical    Adaptive Practice|
-                            |  MediaRecorder    Verified Lexicon   TTS Pronounce    |
+                            |     NEXT.JS 16 FRONTEND (Light Theme, Black Buttons)   |
+                            |  [AI Tutor Tab]             [Learn Tab]               |
+                            |  WebAudio VAD & Speech      396 Photographic Concepts |
+                            |  MediaRecorder              Dual Dialect & Neural TTS |
                             +-------------------------------------------------------+
                                                        |
                                                        | (REST API Calls /api/v1)
@@ -320,10 +320,9 @@ Use pinned dependency versions and maintain a lockfile.
 - **Aesthetic Principles**:
   - Light theme (`bg-slate-50 text-slate-900`) — high readability, zero distracting neon gradients or glowing shadows.
   - Buttons: Pure black with crisp white typography (`bg-black text-white hover:bg-slate-800`), standard rounded corners (`rounded-lg`).
-  - Left Sidebar Navigation with strictly 3 tabs:
-    1. **AI Tutor**: Multimodal conversational assistant with speech input mic button (with animated recording indicator & timer), chat history, verified vocabulary cards, and verbal audio playback.
-    2. **Dictionary**: Category-split 3-column grid displaying the authentic verified vocabulary (499 canonical records: 285 Badaga words [284 with native audio] + 214 Marwari words) grouped into pedagogical categories (Body Parts, Family & Relations, House & Objects, Numbers & Quantities, Time/Nature/Festivals, Daily Life Actions, Activities & Verbs, Sizes & Adjectives) with category filter pills, focused authentic photographic pictures (`apps/web/public/vocab-images/*.jpg`), whole English & Tamil words, Tamil syllabic script breakdown (`த + லை` = `தலை` without English letter splitting), Badaga audio buttons with pure audio symbols and sample dropdown arrow for multi-sample recordings (strictly without speaker names), and Tamil & English audio buttons featuring audio symbols alongside the word script spelling.
-    3. **Quiz Practice**: Interactive adaptive quiz testing meaning comprehension, native pronunciation recall, with instant score tracking and progress feedback.
+  - Left Sidebar Navigation with strictly 2 tabs:
+    1. **AI Tutor**: KURINJI Multimodal Indigenous Hill Speech Recognition & Translation System featuring dual input modes: Type/Speak (transliteration search with live speech dictation & quick suggestion chips) and Audio File/Waveform (16-bit 16kHz PCM WAV encoding & file upload), powered by Google Gemini Multimodal Audio understanding constrained strictly to the 3,318-word verified dictionary, verified Tamil/English meanings, neural TTS, authentic native speaker reference audio playback, match quality indicators, and full Wordbank management.
+    2. **Learn**: Category-split 3-column grid displaying the authentic verified vocabulary (499 canonical records: 285 Badaga words [284 with native audio] + 214 Marwari words) deduplicated into 396 unified concept flashcards in "All Languages" view, grouped into pedagogical categories (Body Parts, Family & Relations, House & Objects, Numbers & Quantities, Time/Nature/Festivals, Daily Life Actions, Activities & Verbs, Sizes & Adjectives) with category filter pills, focused authentic photographic pictures (`apps/web/public/vocab-images/*.jpg`), whole English & Tamil words, Tamil syllabic script breakdown (`த + லை` = `தலை` without English letter splitting), Badaga audio buttons with pure audio symbols and sample dropdown arrow for multi-sample recordings (strictly without speaker names), and Tamil & English audio buttons featuring audio symbols alongside the word script spelling.
 - **Audio Capture Implementation**:
   - Calls `navigator.mediaDevices.getUserMedia` with:
     `channelCount: 1`, `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`, `sampleRate: 16000`.
@@ -1059,10 +1058,6 @@ The platform interface is consolidated into exactly three dedicated functional v
      - Badaga native script where documented.
      - Native speaker audio playback buttons (`Play Voice`).
      - Web Speech / TTS pronunciation buttons for Tamil (`தமிழ்`) and English (`EN`).
-3. **Quiz Practice Tab (`quiz`)**:
-   - Adaptive practice quiz generator for heritage vocabulary.
-   - Multi-choice meaning identification and pronunciation recognition.
-   - Immediate feedback (correct/incorrect) with score tracking.
 
 15.3 Browser Voice Capture Requirements
 - `navigator.mediaDevices.getUserMedia` constraints:

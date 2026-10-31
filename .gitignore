@@ -1,7 +1,7 @@
 # Credentials & Secrets (CRITICAL: Never commit to GitHub)
 Credentials.txt
-.env
-.env*.local
+**/.env
+**/.env*.local
 *.pem
 *.key
 

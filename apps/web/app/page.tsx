@@ -11,7 +11,6 @@ import {
   Search,
   Sparkles,
   BookOpen,
-  GraduationCap,
   RotateCcw,
   Send,
   Play,
@@ -21,6 +20,7 @@ import {
   HelpCircle,
   Volume1,
 } from "lucide-react";
+import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -274,8 +274,8 @@ interface ChatMessage {
 }
 
 export default function Home() {
-  // ONLY 3 tabs in left sidebar: tutor, dictionary, quiz
-  const [activeTab, setActiveTab] = useState<"tutor" | "dictionary" | "quiz">("tutor");
+  // Navigation tabs in left sidebar: tutor, learn
+  const [activeTab, setActiveTab] = useState<"tutor" | "learn">("tutor");
   const [selectedLang, setSelectedLang] = useState<"all" | "badaga" | "marwari">("all");
 
   // Global Audio Playback State
@@ -310,14 +310,6 @@ export default function Home() {
   const [isDictRecording, setIsDictRecording] = useState(false);
   const [isDictProcessingVoice, setIsDictProcessingVoice] = useState(false);
   const dictMediaRecorderRef = useRef<MediaRecorder | null>(null);
-
-  // Quiz state
-  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
-  const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [quizScore, setQuizScore] = useState(0);
-  const [quizCompleted, setQuizCompleted] = useState(false);
-  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
 
   // Language count badges (deduplicated concepts in All Languages view)
   const [langCounts, setLangCounts] = useState<{ all: number; badaga: number; marwari: number }>({
@@ -690,52 +682,6 @@ export default function Home() {
     }
   };
 
-  // Generate Quiz
-  const generateQuiz = async () => {
-    setIsLoadingQuiz(true);
-    setQuizScore(0);
-    setCurrentQIndex(0);
-    setSelectedAnswer(null);
-    setQuizCompleted(false);
-
-    try {
-      const res = await fetch(`${API_BASE}/tutor/quiz-generation`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language_code: selectedLang === "all" ? "badaga" : selectedLang,
-          num_questions: 5,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setQuizQuestions(data.questions || []);
-      }
-    } catch {
-      console.error("Quiz generation failed");
-    } finally {
-      setIsLoadingQuiz(false);
-    }
-  };
-
-  const handleAnswerSelect = (option: string) => {
-    if (selectedAnswer !== null) return;
-    setSelectedAnswer(option);
-    if (option === quizQuestions[currentQIndex]?.correct_answer) {
-      setQuizScore((prev) => prev + 1);
-    }
-  };
-
-  const handleNextQuestion = () => {
-    setSelectedAnswer(null);
-    if (currentQIndex + 1 < quizQuestions.length) {
-      setCurrentQIndex((prev) => prev + 1);
-    } else {
-      setQuizCompleted(true);
-    }
-  };
-
   // Deduplicate vocabulary when viewing "All Languages" so overlapping concepts are merged into one clean card
   const displayVocab = useMemo(() => {
     if (selectedLang !== "all") {
@@ -1052,7 +998,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans antialiased overflow-hidden">
       {/* =========================================================================
-          LEFT PANEL / SIDEBAR (All Navigation in Left Panel, strictly 3 tabs)
+          LEFT PANEL / SIDEBAR (All Navigation in Left Panel, strictly 2 tabs)
           ========================================================================= */}
       <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 select-none z-20">
         <div>
@@ -1136,7 +1082,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* STRICTLY ONLY 3 TABS IN LEFT PANEL */}
+          {/* STRICTLY ONLY 2 TABS IN LEFT PANEL */}
           <div className="px-4 py-4 space-y-1">
             <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 px-1">
               Navigation
@@ -1155,34 +1101,19 @@ export default function Home() {
               <span className="font-semibold">AI Tutor</span>
             </button>
 
-            {/* TAB 2: DICTIONARY */}
+            {/* TAB 2: LEARN */}
             <button
-              onClick={() => setActiveTab("dictionary")}
+              onClick={() => setActiveTab("learn")}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === "dictionary"
+                activeTab === "learn"
                   ? "bg-black text-white shadow-sm"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               <BookOpen className="w-4 h-4 shrink-0" />
-              <span className="font-semibold">Dictionary</span>
+              <span className="font-semibold">Learn</span>
             </button>
 
-            {/* TAB 3: QUIZ PRACTICE */}
-            <button
-              onClick={() => {
-                setActiveTab("quiz");
-                if (quizQuestions.length === 0) generateQuiz();
-              }}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === "quiz"
-                  ? "bg-black text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <GraduationCap className="w-4 h-4 shrink-0" />
-              <span className="font-semibold">Quiz Practice</span>
-            </button>
           </div>
         </div>
 
@@ -1200,209 +1131,42 @@ export default function Home() {
           MAIN CONTENT AREA (Right of Sidebar, Clean Light Theme)
           ========================================================================= */}
       <main className="flex-1 h-full overflow-y-auto bg-slate-50 flex flex-col">
-        {/* Top Header Bar */}
-        <header className="h-16 border-b border-slate-200 bg-white px-6 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              {activeTab === "tutor"
-                ? "AI Heritage Language Tutor"
-                : activeTab === "dictionary"
-                ? "Canonical Dictionary"
-                : "Vocabulary Practice Quiz"}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {activeTab === "tutor"
-                ? "Bilingual grounding in verified Badaga & Marwari canonical records"
-                : activeTab === "dictionary"
-                ? `${filteredVocab.length} verified words loaded`
-                : "Adaptive multiple-choice mastery questions"}
-            </p>
-          </div>
+        {/* Top Header Bar for Learn View */}
+        {activeTab === "learn" && (
+          <header className="h-16 border-b border-slate-200 bg-white px-6 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Learn
+              </h2>
+              <p className="text-xs text-slate-500">
+                {`${filteredVocab.length} verified concepts loaded`}
+              </p>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200">
-              {selectedLang === "all" ? "All Languages" : selectedLang === "badaga" ? "Badaga" : "Marwari"}
-            </span>
-          </div>
-        </header>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200">
+                {selectedLang === "all" ? "All Languages" : selectedLang === "badaga" ? "Badaga" : "Marwari"}
+              </span>
+            </div>
+          </header>
+        )}
 
         {/* =====================================================================
-            VIEW 1: AI TUTOR TAB
+            VIEW 1: AI TUTOR TAB (KURINJI AUDIO SPEECH RECOGNITION & TRANSLATION)
             ===================================================================== */}
         {activeTab === "tutor" && (
-          <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto p-4 sm:p-6 overflow-hidden">
-            {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
-              {chatMessages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-                >
-                  {msg.role === "user" ? (
-                    // User message bubble (Clean black button style)
-                    <div className="bg-black text-white px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm font-medium shadow-sm max-w-xl">
-                      {msg.content}
-                    </div>
-                  ) : (
-                    // Assistant message card (Crisp white card, slate borders)
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm max-w-2xl space-y-3 w-full">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <div className="flex items-center space-x-2">
-                          <Sparkles className="w-3.5 h-3.5 text-slate-900" />
-                          <span className="text-xs font-bold text-slate-900">
-                            {msg.provider || "AI Tutor"}
-                          </span>
-                        </div>
-                        {msg.content && (
-                          <button
-                            onClick={() => speakText(msg.content, msg.content.match(/[\u0B80-\u0BFF]/) ? "ta" : "en", `tutor_msg_${index}`)}
-                            className="flex items-center space-x-1 text-xs text-slate-600 hover:text-black font-medium transition-colors"
-                          >
-                            <Volume2 className="w-3.5 h-3.5" />
-                            <span>Listen</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
-                        {msg.content}
-                      </p>
-
-                      {/* Attached Verified Vocabulary Cards */}
-                      {msg.verified_vocab && msg.verified_vocab.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                            Verified Canonical Records
-                          </div>
-                          {msg.verified_vocab.map((v: any, vIdx: number) => (
-                            <div
-                              key={vIdx}
-                              className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                            >
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black text-white">
-                                    {v.word_id || v.external_word_id}
-                                  </span>
-                                  <span className="text-sm font-bold text-slate-900 capitalize">
-                                    {v.english_meaning}
-                                  </span>
-                                  <span className="text-sm font-bold text-indigo-950">
-                                    ({v.tamil_meaning})
-                                  </span>
-                                </div>
-                                {v.source_word && (
-                                  <p className="text-xs text-slate-500 mt-1">
-                                    Native Script: <span className="font-semibold text-slate-700">&ldquo;{v.source_word}&rdquo;</span>
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Playback Buttons (Black primary style) */}
-                              <div className="flex items-center space-x-1.5 shrink-0">
-                                {v.audio_assets && v.audio_assets.length > 0 ? (
-                                  <button
-                                    onClick={() => playAudio(v.audio_assets[0].audio_url, `vocab_${v.word_id}`)}
-                                    className="bg-black text-white hover:bg-slate-800 text-xs px-3 py-1.5 rounded-lg font-medium flex items-center space-x-1 transition-all"
-                                  >
-                                    <Play className="w-3 h-3 fill-white" />
-                                    <span>Native Audio</span>
-                                  </button>
-                                ) : null}
-
-                                {v.tamil_meaning && (
-                                  <button
-                                    onClick={() => speakText(v.tamil_meaning, "ta", `tam_${v.word_id}`)}
-                                    className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
-                                  >
-                                    தமிழ்
-                                  </button>
-                                )}
-
-                                {v.english_meaning && (
-                                  <button
-                                    onClick={() => speakText(v.english_meaning, "en", `eng_${v.word_id}`)}
-                                    className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
-                                  >
-                                    English
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {isSendingMessage && (
-                <div className="flex items-center space-x-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-3 w-fit shadow-sm">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
-                  <span>Grounding response in verified canonical vector dataset...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Chat Input Bar */}
-            <div className="mt-2 pt-2 border-t border-slate-200 shrink-0">
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-                {/* Voice Record Button (Pure Acoustic Voice Search) */}
-                <button
-                  type="button"
-                  onClick={isTutorRecording ? stopTutorVoiceRecording : startTutorVoiceRecording}
-                  disabled={isTutorProcessingVoice}
-                  title="Voice Search (Speak naturally or pronounce heritage word)"
-                  className={`p-2.5 rounded-lg border transition-all ${
-                    isTutorRecording
-                      ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow"
-                      : isTutorProcessingVoice
-                      ? "bg-slate-100 text-slate-400 border-slate-200"
-                      : "bg-white text-slate-700 hover:text-black hover:bg-slate-100 border-slate-300 shadow-sm"
-                  }`}
-                >
-                  {isTutorRecording ? <Square className="w-4 h-4" /> : isTutorProcessingVoice ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Mic className="w-4 h-4" />}
-                </button>
-
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={
-                    isTutorRecording
-                      ? `🎙️ Listening (${tutorRecordTime}s)... Speak your question or Badaga word clearly...`
-                      : isTutorProcessingVoice
-                      ? "⚡ Matching voice acoustics & grounding response in verified vectors..."
-                      : "Ask in English or Tamil (e.g. 'What is head in Badaga?' or 'கரும்பு படக மொழியில் என்ன?')..."
-                  }
-                  className={`flex-1 bg-white border rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black shadow-sm ${
-                    isTutorRecording ? "border-rose-500 ring-1 ring-rose-500" : "border-slate-300"
-                  }`}
-                />
-
-                {/* Black Send Button */}
-                <button
-                  type="submit"
-                  disabled={!inputMessage.trim() || isSendingMessage}
-                  className="bg-black text-white hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-black px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm shrink-0"
-                >
-                  <span>Send</span>
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
-                <span>Supports natural English & Tamil queries</span>
-                <span>Direct Voice Search active</span>
-              </div>
-            </div>
+          <div className="flex-1 w-full h-full overflow-hidden">
+            <KurinjiAITutor
+              initialLanguage={selectedLang === "marwari" ? "Marwari" : "Badaga"}
+              onLanguageChange={(lang) => setSelectedLang(lang.toLowerCase() as "badaga" | "marwari")}
+            />
           </div>
         )}
 
         {/* =====================================================================
-            VIEW 2: DICTIONARY TAB
+            VIEW 2: LEARN TAB
             ===================================================================== */}
-        {activeTab === "dictionary" && (
+        {activeTab === "learn" && (
           <div className="flex-1 p-6 sm:p-8 space-y-6">
             {/* Search Input Bar */}
             <div className="max-w-3xl flex items-center space-x-3">
@@ -1430,7 +1194,7 @@ export default function Home() {
                 type="button"
                 onClick={isDictRecording ? stopDictVoiceRecording : startDictVoiceRecording}
                 disabled={isDictProcessingVoice}
-                title="Voice Search (Speak word to search in dictionary)"
+                title="Voice Search (Speak word to search)"
                 className={`p-2.5 rounded-lg border transition-all ${
                   isDictRecording
                     ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow"
@@ -1640,112 +1404,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* =====================================================================
-            VIEW 3: QUIZ PRACTICE TAB
-            ===================================================================== */}
-        {activeTab === "quiz" && (
-          <div className="flex-1 p-6 sm:p-8 flex items-center justify-center">
-            <div className="max-w-xl w-full bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-              {isLoadingQuiz ? (
-                <div className="text-center py-12 space-y-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-black mx-auto" />
-                  <p className="text-sm font-medium text-slate-600">Generating adaptive practice quiz...</p>
-                </div>
-              ) : quizCompleted ? (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-bold">
-                    ✓
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">Quiz Completed!</h3>
-                    <p className="text-sm text-slate-600 mt-1">
-                      You scored <strong className="text-black">{quizScore}</strong> out of{" "}
-                      <strong className="text-black">{quizQuestions.length}</strong>
-                    </p>
-                  </div>
-                  <button
-                    onClick={generateQuiz}
-                    className="bg-black text-white hover:bg-slate-800 px-5 py-2.5 rounded-lg text-xs font-semibold transition-all shadow-sm"
-                  >
-                    Try Another Quiz
-                  </button>
-                </div>
-              ) : quizQuestions.length > 0 && quizQuestions[currentQIndex] ? (
-                <div className="space-y-6">
-                  {/* Progress Header */}
-                  <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-3">
-                    <span className="font-semibold text-slate-700">
-                      Question {currentQIndex + 1} of {quizQuestions.length}
-                    </span>
-                    <span>Score: {quizScore}</span>
-                  </div>
-
-                  {/* Question */}
-                  <div>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                      Meaning Identification
-                    </span>
-                    <h3 className="text-lg font-bold text-slate-900 mt-1">
-                      {quizQuestions[currentQIndex].question_text}
-                    </h3>
-                  </div>
-
-                  {/* Options */}
-                  <div className="space-y-2.5">
-                    {quizQuestions[currentQIndex].options?.map((opt: string, optIdx: number) => {
-                      const isSelected = selectedAnswer === opt;
-                      const isCorrect = opt === quizQuestions[currentQIndex].correct_answer;
-                      let btnStyle = "bg-white border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50";
-
-                      if (selectedAnswer !== null) {
-                        if (isCorrect) {
-                          btnStyle = "bg-emerald-50 border-emerald-500 text-emerald-900 font-semibold";
-                        } else if (isSelected) {
-                          btnStyle = "bg-rose-50 border-rose-500 text-rose-900";
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={optIdx}
-                          disabled={selectedAnswer !== null}
-                          onClick={() => handleAnswerSelect(opt)}
-                          className={`w-full text-left p-3.5 rounded-xl border text-sm transition-all flex items-center justify-between ${btnStyle}`}
-                        >
-                          <span>{opt}</span>
-                          {selectedAnswer !== null && isCorrect && (
-                            <span className="text-xs text-emerald-700 font-bold">Correct</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Next Question (Black button) */}
-                  {selectedAnswer !== null && (
-                    <button
-                      onClick={handleNextQuestion}
-                      className="w-full bg-black text-white hover:bg-slate-800 py-3 rounded-lg text-xs font-semibold transition-all shadow-sm"
-                    >
-                      {currentQIndex + 1 < quizQuestions.length ? "Next Question" : "View Results"}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-10 space-y-3">
-                  <p className="text-sm text-slate-600">No questions loaded yet.</p>
-                  <button
-                    onClick={generateQuiz}
-                    className="bg-black text-white hover:bg-slate-800 px-4 py-2 rounded-lg text-xs font-semibold"
-                  >
-                    Start Quiz
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         )}
       </main>
