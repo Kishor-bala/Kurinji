@@ -87,7 +87,10 @@ export async function POST(request: NextRequest) {
       vocabulary: newEntry,
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ status: "error", message: msg }, { status: 500 });
+    console.error("Vocabulary mutation error:", err);
+    return NextResponse.json(
+      { status: "error", message: "Unable to process vocabulary entry. Please try again." },
+      { status: 500 }
+    );
   }
 }

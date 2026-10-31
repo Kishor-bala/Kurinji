@@ -214,6 +214,9 @@ export default function AudioRecorder({
       setAudioBlob(wavBlob);
       setAudioUrl(URL.createObjectURL(wavBlob));
       setUploadedFileName("");
+
+      // Immediately start analyzing speech with loading animation
+      onAnalyse(wavBlob);
     }
   };
 
@@ -265,6 +268,34 @@ export default function AudioRecorder({
           </button>
         )}
       </div>
+
+      {isAnalyzing && (
+        <div
+          className="analyzing-wave-box"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+            margin: "14px 0 8px",
+            padding: "10px 16px",
+            background: "var(--kurinji-50)",
+            border: "1px solid var(--kurinji-100)",
+            borderRadius: "12px",
+          }}
+        >
+          <div className="wave-container" aria-label="Analyzing recorded speech">
+            <span className="wave-bar wave-bar-1"></span>
+            <span className="wave-bar wave-bar-2"></span>
+            <span className="wave-bar wave-bar-3"></span>
+            <span className="wave-bar wave-bar-4"></span>
+            <span className="wave-bar wave-bar-5"></span>
+          </div>
+          <span style={{ fontSize: "0.84rem", color: "var(--kurinji-700)", fontWeight: 700 }}>
+            Analyzing audio &amp; matching vocabulary...
+          </span>
+        </div>
+      )}
 
       {!isRecording ? (
         <>

@@ -1040,3 +1040,115 @@
     gap: 10px;
   }
 }
+
+/* ==========================================================================
+   Voice Equalizer Waves Loading Animation (Kurinji AI Tutor)
+   ========================================================================== */
+@keyframes kurinjiWave {
+  0%, 100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.wave-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 40px;
+}
+
+.wave-bar {
+  display: inline-block;
+  width: 4px;
+  background-color: #0f172a;
+  border-radius: 9999px;
+  animation: kurinjiWave 1.1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.wave-bar-1 { height: 18px; animation-delay: 0.05s; }
+.wave-bar-2 { height: 32px; animation-delay: 0.2s; }
+.wave-bar-3 { height: 40px; animation-delay: 0.35s; }
+.wave-bar-4 { height: 26px; animation-delay: 0.15s; }
+.wave-bar-5 { height: 34px; animation-delay: 0.3s; }
+
+.loading-pulse-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Crystal Clear Vocabulary Card Slide Transitions
+   ========================================================================== */
+@keyframes cardSlideOutLeft {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-110%) scale(0.92);
+    opacity: 0;
+  }
+}
+
+@keyframes cardSlideOutRight {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(110%) scale(0.92);
+    opacity: 0;
+  }
+}
+
+@keyframes cardSlideInRight {
+  0% {
+    transform: translateX(80px) scale(0.94);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cardSlideInLeft {
+  0% {
+    transform: translateX(-80px) scale(0.94);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.card-slide-out-left {
+  animation: cardSlideOutLeft 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.card-slide-out-right {
+  animation: cardSlideOutRight 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.card-slide-in-right {
+  animation: cardSlideInRight 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.card-slide-in-left {
+  animation: cardSlideInLeft 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

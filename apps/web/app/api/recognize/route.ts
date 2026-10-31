@@ -177,7 +177,7 @@ Respond ONLY with valid JSON:
                   english_meaning: matchedEntry.english_meaning,
                   similarity: confidence,
                   margin: 0.15,
-                  message: `Identified via Gemini Audio AI: ${explanation}`,
+                  message: `Identified in verified ${targetLang} wordbank: ${explanation}`,
                   ranked_candidates: [
                     {
                       word_id: matchedEntry.word_id,
@@ -246,9 +246,9 @@ Respond ONLY with valid JSON:
         : [],
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Audio recognition error:", err);
     return NextResponse.json(
-      { status: "unknown", message: msg, similarity: 0.0, ranked_candidates: [] },
+      { status: "unknown", message: "Unable to process audio recording at this time. Please try again.", similarity: 0.0, ranked_candidates: [] },
       { status: 500 }
     );
   }

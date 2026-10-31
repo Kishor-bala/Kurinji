@@ -87,9 +87,8 @@ export default function VocabularyManager({
       } else {
         setFormMsg(data.message || "Failed to add entry.");
       }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setFormMsg("Error: " + errorMsg);
+    } catch {
+      setFormMsg("Unable to add entry at this time. Please verify details and try again.");
     } finally {
       setIsSubmitting(false);
     }

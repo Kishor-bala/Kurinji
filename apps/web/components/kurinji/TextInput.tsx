@@ -255,6 +255,35 @@ export default function TextInput({
         </div>
       )}
 
+      {/* Loading Animation after mic stop / while translating */}
+      {isTranslating && (
+        <div
+          className="translating-indicator"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            marginTop: "12px",
+            padding: "8px 14px",
+            borderRadius: "10px",
+            background: "var(--kurinji-50)",
+            border: "1px solid var(--kurinji-100)",
+          }}
+        >
+          <div className="wave-container" style={{ height: "22px", gap: "3px" }}>
+            <span className="wave-bar wave-bar-1" style={{ width: "3px", height: "12px" }}></span>
+            <span className="wave-bar wave-bar-2" style={{ width: "3px", height: "18px" }}></span>
+            <span className="wave-bar wave-bar-3" style={{ width: "3px", height: "22px" }}></span>
+            <span className="wave-bar wave-bar-4" style={{ width: "3px", height: "16px" }}></span>
+            <span className="wave-bar wave-bar-5" style={{ width: "3px", height: "19px" }}></span>
+          </div>
+          <span style={{ fontSize: "0.85rem", color: "var(--kurinji-700)", fontWeight: 700 }}>
+            Analyzing pronunciation &amp; matching verified vocabulary...
+          </span>
+        </div>
+      )}
+
       {/* Quick Suggestion Chips */}
       <div className="suggestion-chips-container">
         <span className="suggestion-label">Quick Examples:</span>

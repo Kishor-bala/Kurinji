@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "KURINJI | Badaga & Marwari Voice Vocabulary Learning Platform",
-  description: "AI-Powered Voice-Based Vocabulary Learning Platform supporting Badaga and Marwari languages using XLS-R acoustic embeddings, dual vector stores, and grounded AI tutor.",
+  description: "Interactive voice-based vocabulary learning platform for indigenous Badaga and Marwari languages with authentic native pronunciations.",
 };
 
 export default function RootLayout({

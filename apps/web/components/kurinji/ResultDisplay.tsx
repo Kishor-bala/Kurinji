@@ -29,6 +29,7 @@ interface ResultDisplayProps {
   onRecordAgain: () => void;
   actionLabel?: string;
   selectedLanguage?: string;
+  isAnalyzing?: boolean;
 }
 
 export default function ResultDisplay({
@@ -36,7 +37,29 @@ export default function ResultDisplay({
   onRecordAgain,
   actionLabel = "Record Another Word",
   selectedLanguage = "Badaga",
+  isAnalyzing = false,
 }: ResultDisplayProps) {
+  // Loading state when voice is being analyzed or translated
+  if (isAnalyzing) {
+    return (
+      <div className="result-card loading-pulse-card" id="analyzing-result-card">
+        <div className="wave-container" aria-label="Processing audio">
+          <span className="wave-bar wave-bar-1"></span>
+          <span className="wave-bar wave-bar-2"></span>
+          <span className="wave-bar wave-bar-3"></span>
+          <span className="wave-bar wave-bar-4"></span>
+          <span className="wave-bar wave-bar-5"></span>
+        </div>
+        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, marginTop: "16px", color: "var(--text-main)" }}>
+          Analyzing Speech...
+        </h3>
+        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "6px" }}>
+          Matching against verified {selectedLanguage} vocabulary
+        </p>
+      </div>
+    );
+  }
+
   // Idle state when nothing has been translated yet
   if (!result) {
     return (
@@ -165,14 +188,14 @@ export default function ResultDisplay({
                   type="button"
                   className="nav-link-btn native-audio-btn"
                   onClick={playReferenceAudio}
-                  title={`Listen to authentic native hill-speaker reference pronunciation (${bestClipId})`}
+                  title="Listen to authentic native reference pronunciation"
                 >
                   <Volume2 size={16} />
                   Listen Native {language || selectedLanguage}
                 </button>
               )}
               <span className="match-quality">
-                Match quality: {similarity >= 0.85 ? "High" : "Moderate"} ({similarity.toFixed(3)})
+                Match confidence: {similarity >= 0.85 ? "High" : "Good"}
               </span>
             </div>
 
@@ -235,7 +258,7 @@ export default function ResultDisplay({
                   Listen Native {language || selectedLanguage}
                 </button>
               )}
-              <span className="match-quality">Score: {similarity.toFixed(3)}</span>
+              <span className="match-quality">Confidence: Moderate</span>
             </div>
             <button type="button" className="record-again-btn" onClick={onRecordAgain}>
               {actionLabel}
@@ -303,7 +326,7 @@ export default function ResultDisplay({
             </div>
           )}
           <div className="result-footer">
-            <span className="match-quality">Closest similarity: {similarity.toFixed(3)}</span>
+            <span className="match-quality">No exact match found</span>
             <button type="button" className="record-again-btn" onClick={onRecordAgain}>
               {actionLabel}
             </button>

@@ -11,13 +11,12 @@ export async function GET() {
 
   return NextResponse.json({
     status: "healthy",
-    encoder: "Gemini 2.5 Audio AI + Verified Vocabulary Grounding",
+    encoder: "Kurinji Audio AI + Verified Vocabulary Grounding",
     sample_rate: 16000,
     gemini_enabled: geminiEnabled,
     counts: {
       vocabulary: vocabCount,
       recordings: recordingsCount,
-      embeddings: embeddingsCount,
     },
   });
 }

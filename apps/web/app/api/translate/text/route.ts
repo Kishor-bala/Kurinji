@@ -215,9 +215,9 @@ Instructions:
         : [],
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Text translation error:", err);
     return NextResponse.json(
-      { status: "unknown", message: msg, similarity: 0.0, ranked_candidates: [] },
+      { status: "unknown", message: "Unable to translate word at this time. Please try again.", similarity: 0.0, ranked_candidates: [] },
       { status: 500 }
     );
   }

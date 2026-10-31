@@ -303,7 +303,7 @@ export default function Home() {
     {
       role: "assistant",
       content: "Namaskara! I am your AI Teaching Assistant for Badaga and Marwari. Ask me about vocabulary definitions, pronunciations, or practice sentences. Everything I teach is strictly verified against canonical records.",
-      provider: "Google Gemini",
+      provider: "Kurinji AI",
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -328,12 +328,13 @@ export default function Home() {
     marwari: 214,
   });
 
-  // Tinder Swiper deck state for Learn mode
+  // Vocabulary Card slide deck state for Learn mode
   const [swiperIndex, setSwiperIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [swipeExitDir, setSwipeExitDir] = useState<"left" | "right" | null>(null);
+  const [slideAnim, setSlideAnim] = useState<"exit-left" | "exit-right" | "enter-left" | "enter-right" | null>(null);
+  const [isAnimatingCard, setIsAnimatingCard] = useState(false);
 
   const fetchLanguages = async () => {
     try {
@@ -520,7 +521,7 @@ export default function Home() {
           {
             role: "assistant",
             content: data.message,
-            provider: data.provider_used === "gemini" ? "Google Gemini" : data.provider_used === "groq" ? "Groq Llama 3.3" : data.provider_used,
+            provider: "Kurinji AI",
             verified_vocab: data.verified_vocabulary,
             audio_url: data.audio_url,
             audio_assets: data.audio_assets,
@@ -539,7 +540,7 @@ export default function Home() {
           {
             role: "assistant",
             content: "Sorry, I could not process your voice audio. Please ensure your microphone is working and speak clearly.",
-            provider: "Voice Assistant",
+            provider: "Kurinji AI",
           },
         ]);
       }
@@ -549,8 +550,8 @@ export default function Home() {
         ...prev,
         {
           role: "assistant",
-          content: "Network error processing voice audio. Please check that the server is active.",
-          provider: "Offline",
+          content: "Voice recognition is temporarily unavailable. Please try again.",
+          provider: "Kurinji AI",
         },
       ]);
     } finally {
@@ -664,7 +665,7 @@ export default function Home() {
           {
             role: "assistant",
             content: data.message,
-            provider: data.provider_used === "gemini" ? "Google Gemini" : data.provider_used === "groq" ? "Groq Llama 3.3" : data.provider_used,
+            provider: "Kurinji AI",
             verified_vocab: data.verified_vocabulary,
             audio_url: data.audio_url,
             audio_assets: data.audio_assets,
@@ -681,7 +682,7 @@ export default function Home() {
           {
             role: "assistant",
             content: "Sorry, I encountered an issue retrieving that definition. Please try again.",
-            provider: "System Error",
+            provider: "Kurinji AI",
           },
         ]);
       }
@@ -690,8 +691,8 @@ export default function Home() {
         ...prev,
         {
           role: "assistant",
-          content: "Could not reach the tutor service. Please check your backend connection.",
-          provider: "Offline",
+          content: "Could not reach the AI tutor service at this time. Please try again in a moment.",
+          provider: "Kurinji AI",
         },
       ]);
     } finally {
@@ -835,45 +836,59 @@ export default function Home() {
     setSelectedCategory(catName);
     setSwiperIndex(0);
     setDragOffset({ x: 0, y: 0 });
-    setSwipeExitDir(null);
+    setSlideAnim(null);
+    setIsAnimatingCard(false);
   };
 
   const backToCategoryContainers = () => {
     setSelectedCategory("all");
     setSwiperIndex(0);
     setDragOffset({ x: 0, y: 0 });
-    setSwipeExitDir(null);
+    setSlideAnim(null);
+    setIsAnimatingCard(false);
   };
 
-  // Swiper controls
+  // Card slide controls: directional slide-out then clean entrance slide-in
   const handleNextCard = () => {
-    if (swipeExitDir || swiperIndex >= currentDeck.length) return;
-    setSwipeExitDir("right");
+    if (isAnimatingCard || swiperIndex >= currentDeck.length) return;
+    setIsAnimatingCard(true);
+    setSlideAnim("exit-left");
     setTimeout(() => {
       setSwiperIndex((prev) => Math.min(prev + 1, currentDeck.length));
-      setSwipeExitDir(null);
+      setSlideAnim("enter-right");
       setDragOffset({ x: 0, y: 0 });
-    }, 200);
+      setTimeout(() => {
+        setSlideAnim(null);
+        setIsAnimatingCard(false);
+      }, 260);
+    }, 220);
   };
 
   const handlePrevCard = () => {
-    if (swipeExitDir || swiperIndex <= 0) return;
-    setSwipeExitDir("left");
+    if (isAnimatingCard || swiperIndex <= 0) return;
+    setIsAnimatingCard(true);
+    setSlideAnim("exit-right");
     setTimeout(() => {
       setSwiperIndex((prev) => Math.max(0, prev - 1));
-      setSwipeExitDir(null);
+      setSlideAnim("enter-left");
       setDragOffset({ x: 0, y: 0 });
-    }, 200);
+      setTimeout(() => {
+        setSlideAnim(null);
+        setIsAnimatingCard(false);
+      }, 260);
+    }, 220);
   };
 
   const handleResetDeck = () => {
     setSwiperIndex(0);
     setDragOffset({ x: 0, y: 0 });
-    setSwipeExitDir(null);
+    setSlideAnim(null);
+    setIsAnimatingCard(false);
   };
 
-  // Touch & Mouse drag gestures for Tinder-style swiping
+  // Touch & Mouse drag gestures for fluid card swiping
   const onTouchStart = (e: React.TouchEvent) => {
+    if (isAnimatingCard) return;
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("select") || target.closest("input")) return;
     setIsDragging(true);
@@ -881,7 +896,7 @@ export default function Home() {
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || isAnimatingCard) return;
     const deltaX = e.touches[0].clientX - dragStart.x;
     const deltaY = e.touches[0].clientY - dragStart.y;
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
@@ -892,16 +907,23 @@ export default function Home() {
   const onTouchEnd = () => {
     if (!isDragging) return;
     setIsDragging(false);
-    if (dragOffset.x > 80) {
+    if (dragOffset.x < -60) {
+      // Swiped Left -> Next Card
       handleNextCard();
-    } else if (dragOffset.x < -80) {
-      handleNextCard();
+    } else if (dragOffset.x > 60) {
+      // Swiped Right -> Previous Card if available, else Next
+      if (swiperIndex > 0) {
+        handlePrevCard();
+      } else {
+        handleNextCard();
+      }
     } else {
       setDragOffset({ x: 0, y: 0 });
     }
   };
 
   const onMouseDown = (e: React.MouseEvent) => {
+    if (isAnimatingCard) return;
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("select") || target.closest("input")) return;
     setIsDragging(true);
@@ -909,7 +931,7 @@ export default function Home() {
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || isAnimatingCard) return;
     const deltaX = e.clientX - dragStart.x;
     const deltaY = e.clientY - dragStart.y;
     setDragOffset({ x: deltaX, y: deltaY });
@@ -918,10 +940,16 @@ export default function Home() {
   const onMouseUp = () => {
     if (!isDragging) return;
     setIsDragging(false);
-    if (dragOffset.x > 80) {
+    if (dragOffset.x < -60) {
+      // Dragged Left -> Next Card
       handleNextCard();
-    } else if (dragOffset.x < -80) {
-      handleNextCard();
+    } else if (dragOffset.x > 60) {
+      // Dragged Right -> Previous Card if available, else Next
+      if (swiperIndex > 0) {
+        handlePrevCard();
+      } else {
+        handleNextCard();
+      }
     } else {
       setDragOffset({ x: 0, y: 0 });
     }
@@ -1331,10 +1359,10 @@ export default function Home() {
         {/* Sidebar Footer Status */}
         <div className="p-4 border-t border-slate-100 bg-white">
           <div className="flex items-center space-x-2 text-xs font-medium text-slate-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Pure VectorDB Grounding</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Verified Heritage Wordbank</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Milvus Lite & Qdrant Active</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Native Oral Pronunciations Active</p>
         </div>
       </aside>
 
@@ -1425,7 +1453,7 @@ export default function Home() {
                     isDictRecording
                       ? "🎙️ Listening... Speak Badaga, Tamil, or English word clearly..."
                       : isDictProcessingVoice
-                      ? "⚡ Matching voice with noise cancellation & vector similarity..."
+                      ? "⚡ Matching voice with clear audio filter & verified wordbank..."
                       : "Search by Badaga, Tamil, English, or Word ID (e.g., 'mande', 'தலை', 'W0001')..."
                   }
                   className={`w-full bg-white border rounded-lg pl-10 pr-4 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black shadow-xs ${
@@ -1683,55 +1711,43 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  /* Active Tinder Cards Stack (Shows 1 by 1 with background depth) */
-                  <div className="space-y-5">
-                    <div className="relative w-full select-none">
-                      {/* Card 3 (Bottom background card) */}
-                      {currentDeck[swiperIndex + 2] && (
-                        <div
-                          className="absolute inset-0 pointer-events-none select-none transition-all duration-300"
-                          style={{
-                            transform: "scale(0.92) translateY(20px)",
-                            opacity: 0.35,
-                            zIndex: 1,
-                          }}
-                        >
-                          {renderVocabCard(currentDeck[swiperIndex + 2], true)}
-                        </div>
-                      )}
+                  /* Active Vocabulary Card with Unmistakable Directional Slide Transition */
+                  <div className="space-y-4">
+                    {/* Visual Card Counter Header */}
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-900 text-white shadow-xs">
+                          Card {Math.min(swiperIndex + 1, currentDeck.length)} of {currentDeck.length}
+                        </span>
+                        <span className="text-xs text-slate-600 font-bold hidden sm:inline">
+                          {selectedCategory}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-bold">
+                        <span>Swipe or use arrows below</span>
+                      </div>
+                    </div>
 
-                      {/* Card 2 (Middle background card) */}
-                      {currentDeck[swiperIndex + 1] && (
-                        <div
-                          className="absolute inset-0 pointer-events-none select-none transition-all duration-300"
-                          style={{
-                            transform: "scale(0.96) translateY(10px)",
-                            opacity: 0.7,
-                            zIndex: 2,
-                          }}
-                        >
-                          {renderVocabCard(currentDeck[swiperIndex + 1], true)}
-                        </div>
-                      )}
-
-                      {/* Card 1 (Top Interactive Tinder Card) */}
+                    <div className="relative w-full select-none overflow-hidden rounded-2xl">
                       {currentDeck[swiperIndex] && (
                         <div
-                          className="relative cursor-grab active:cursor-grabbing transition-transform duration-150"
+                          key={`card-slide-${currentDeck[swiperIndex].id}-${swiperIndex}`}
+                          className={`relative cursor-grab active:cursor-grabbing ${
+                            slideAnim === "exit-left"
+                              ? "card-slide-out-left"
+                              : slideAnim === "exit-right"
+                              ? "card-slide-out-right"
+                              : slideAnim === "enter-right"
+                              ? "card-slide-in-right"
+                              : slideAnim === "enter-left"
+                              ? "card-slide-in-left"
+                              : ""
+                          }`}
                           style={{
-                            transform:
-                              swipeExitDir === "right"
-                                ? "translateX(120%) rotate(25deg)"
-                                : swipeExitDir === "left"
-                                ? "translateX(-120%) rotate(-25deg)"
-                                : `translate(${dragOffset.x}px, ${dragOffset.y * 0.25}px) rotate(${
-                                    dragOffset.x * 0.04
-                                  }deg)`,
-                            opacity: swipeExitDir ? 0 : 1,
-                            transition: isDragging
-                              ? "none"
-                              : "transform 0.25s ease, opacity 0.25s ease",
-                            zIndex: 10,
+                            transform: !slideAnim && isDragging
+                              ? `translate(${dragOffset.x}px, ${dragOffset.y * 0.2}px)`
+                              : undefined,
+                            transition: isDragging ? "none" : undefined,
                           }}
                           onTouchStart={onTouchStart}
                           onTouchMove={onTouchMove}
@@ -1741,15 +1757,15 @@ export default function Home() {
                           onMouseUp={onMouseUp}
                           onMouseLeave={onMouseLeave}
                         >
-                          {/* Swipe Hint Badges (Like Tinder: NEXT on right drag, SKIP on left drag) */}
+                          {/* Swipe Hint Badges */}
                           {dragOffset.x > 35 && (
-                            <div className="absolute top-4 left-4 z-30 px-3.5 py-1 rounded-lg border-2 border-emerald-500 bg-emerald-50/95 text-emerald-700 font-black text-sm uppercase tracking-widest shadow-md transform -rotate-12 pointer-events-none">
-                              NEXT →
+                            <div className="absolute top-4 left-4 z-30 px-3.5 py-1 rounded-lg border-2 border-emerald-500 bg-emerald-50/95 text-emerald-700 font-black text-sm uppercase tracking-widest shadow-md pointer-events-none">
+                              {swiperIndex > 0 ? "← PREV" : "NEXT →"}
                             </div>
                           )}
                           {dragOffset.x < -35 && (
-                            <div className="absolute top-4 right-4 z-30 px-3.5 py-1 rounded-lg border-2 border-amber-500 bg-amber-50/95 text-amber-700 font-black text-sm uppercase tracking-widest shadow-md transform rotate-12 pointer-events-none">
-                              ← SKIP
+                            <div className="absolute top-4 right-4 z-30 px-3.5 py-1 rounded-lg border-2 border-blue-500 bg-blue-50/95 text-blue-700 font-black text-sm uppercase tracking-widest shadow-md pointer-events-none">
+                              NEXT →
                             </div>
                           )}
 
@@ -1765,10 +1781,10 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={handlePrevCard}
-                          disabled={swiperIndex <= 0}
+                          disabled={swiperIndex <= 0 || isAnimatingCard}
                           title="Previous Card (Left Arrow)"
                           className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center transition-all shadow-xs active:scale-95 ${
-                            swiperIndex <= 0
+                            swiperIndex <= 0 || isAnimatingCard
                               ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
                               : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-black hover:scale-105"
                           }`}
@@ -1811,10 +1827,10 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={handleNextCard}
-                          disabled={swiperIndex >= currentDeck.length}
+                          disabled={swiperIndex >= currentDeck.length || isAnimatingCard}
                           title="Next Card (Right Arrow)"
                           className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center transition-all shadow-md active:scale-95 ${
-                            swiperIndex >= currentDeck.length
+                            swiperIndex >= currentDeck.length || isAnimatingCard
                               ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
                               : "bg-black text-white border-black hover:bg-slate-800 hover:scale-105"
                           }`}

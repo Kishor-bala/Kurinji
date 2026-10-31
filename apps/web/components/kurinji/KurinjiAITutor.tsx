@@ -163,11 +163,7 @@ export default function KurinjiAITutor({
               {backendInfo && (
                 <span
                   className="ai-status-pill"
-                  title={
-                    backendInfo.gemini_enabled
-                      ? "Multimodal Audio AI + Verified Vocabulary Grounding"
-                      : "Running locally with frozen XLS-R 300M"
-                  }
+                  title="Verified Native Heritage Vocabulary Active"
                 >
                   <span className={`status-dot ${backendInfo.gemini_enabled ? "active" : ""}`} />
                   {backendInfo.gemini_enabled ? "AI Active" : "Offline"}
@@ -298,6 +294,7 @@ export default function KurinjiAITutor({
                 onRecordAgain={handleRecordAgain}
                 actionLabel={inputMode === "text" ? "Translate Another Word" : "Record Another Word"}
                 selectedLanguage={selectedLanguage}
+                isAnalyzing={isAnalyzing}
               />
             </div>
           </div>
