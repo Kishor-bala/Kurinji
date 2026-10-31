@@ -7,6 +7,10 @@ import {
   Volume2,
   VolumeX,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
   Layers,
   Search,
   Sparkles,
@@ -19,6 +23,7 @@ import {
   AlertCircle,
   HelpCircle,
   Volume1,
+  Shuffle,
 } from "lucide-react";
 import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
 
@@ -317,6 +322,13 @@ export default function Home() {
     badaga: 285,
     marwari: 214,
   });
+
+  // Tinder Swiper deck state for Learn mode
+  const [swiperIndex, setSwiperIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [swipeExitDir, setSwipeExitDir] = useState<"left" | "right" | null>(null);
 
   const fetchLanguages = async () => {
     try {
@@ -789,11 +801,172 @@ export default function Home() {
     return orderedMap;
   }, [filteredVocab]);
 
-  // Helper to render individual vocabulary card
-  const renderVocabCard = (item: VocabularyItem) => (
+  // Group all displayVocab items into categories for the Category Container Decks
+  const allCategoryDecks = useMemo(() => {
+    const map: Record<string, VocabularyItem[]> = {};
+    const sorted = [...displayVocab].sort((a, b) => {
+      const numA = parseInt(a.external_word_id.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.external_word_id.replace(/\D/g, "")) || 0;
+      return numA - numB;
+    });
+    sorted.forEach((item) => {
+      const cat = item.category || "General Vocabulary";
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(item);
+    });
+    return map;
+  }, [displayVocab]);
+
+  // The active deck being swiped: either the selected category's cards or filtered search cards
+  const currentDeck = useMemo(() => {
+    if (selectedCategory !== "all") {
+      return allCategoryDecks[selectedCategory] || [];
+    }
+    return filteredVocab;
+  }, [allCategoryDecks, selectedCategory, filteredVocab]);
+
+  // Category navigation handlers
+  const selectCategoryDeck = (catName: string) => {
+    setSelectedCategory(catName);
+    setSwiperIndex(0);
+    setDragOffset({ x: 0, y: 0 });
+    setSwipeExitDir(null);
+  };
+
+  const backToCategoryContainers = () => {
+    setSelectedCategory("all");
+    setSwiperIndex(0);
+    setDragOffset({ x: 0, y: 0 });
+    setSwipeExitDir(null);
+  };
+
+  // Swiper controls
+  const handleNextCard = () => {
+    if (swipeExitDir || swiperIndex >= currentDeck.length) return;
+    setSwipeExitDir("right");
+    setTimeout(() => {
+      setSwiperIndex((prev) => Math.min(prev + 1, currentDeck.length));
+      setSwipeExitDir(null);
+      setDragOffset({ x: 0, y: 0 });
+    }, 200);
+  };
+
+  const handlePrevCard = () => {
+    if (swipeExitDir || swiperIndex <= 0) return;
+    setSwipeExitDir("left");
+    setTimeout(() => {
+      setSwiperIndex((prev) => Math.max(0, prev - 1));
+      setSwipeExitDir(null);
+      setDragOffset({ x: 0, y: 0 });
+    }, 200);
+  };
+
+  const handleResetDeck = () => {
+    setSwiperIndex(0);
+    setDragOffset({ x: 0, y: 0 });
+    setSwipeExitDir(null);
+  };
+
+  // Touch & Mouse drag gestures for Tinder-style swiping
+  const onTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("select") || target.closest("input")) return;
+    setIsDragging(true);
+    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const deltaX = e.touches[0].clientX - dragStart.x;
+    const deltaY = e.touches[0].clientY - dragStart.y;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      setDragOffset({ x: deltaX, y: deltaY });
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragOffset.x > 80) {
+      handleNextCard();
+    } else if (dragOffset.x < -80) {
+      handleNextCard();
+    } else {
+      setDragOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("select") || target.closest("input")) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    setDragOffset({ x: deltaX, y: deltaY });
+  };
+
+  const onMouseUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (dragOffset.x > 80) {
+      handleNextCard();
+    } else if (dragOffset.x < -80) {
+      handleNextCard();
+    } else {
+      setDragOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const onMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+    }
+  };
+
+  // Keyboard navigation: Left/Right arrows for swiping, Space to pronounce
+  useEffect(() => {
+    if (activeTab !== "learn" || selectedCategory === "all") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNextCard();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrevCard();
+      } else if (e.key === " ") {
+        e.preventDefault();
+        const currentItem = currentDeck[swiperIndex];
+        if (currentItem) {
+          if (currentItem.badaga_audio_assets && currentItem.badaga_audio_assets.length > 0) {
+            playAudio(currentItem.badaga_audio_assets[0].audio_url);
+          } else if (currentItem.audio_assets && currentItem.audio_assets.length > 0) {
+            playAudio(currentItem.audio_assets[0].audio_url);
+          } else if (currentItem.tamil_meaning) {
+            speakText(currentItem.tamil_meaning, "ta");
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, selectedCategory, swiperIndex, currentDeck]);
+
+  // Helper to render individual vocabulary card (identical UI elements in both views)
+  const renderVocabCard = (item: VocabularyItem, isSwiperMode = false) => (
     <div
       key={item.id || `${item.language_code}_${item.external_word_id}`}
-      className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between space-y-3.5"
+      className={`bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs transition-all flex flex-col justify-between space-y-3.5 ${
+        isSwiperMode ? "w-full h-full shadow-xl border-slate-300" : "hover:shadow-md hover:border-slate-300"
+      }`}
     >
       <div>
         {/* Top Photographic Flashcard Image (100% of all words) */}
@@ -1135,11 +1308,33 @@ export default function Home() {
         {activeTab === "learn" && (
           <header className="h-16 border-b border-slate-200 bg-white px-6 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Learn
-              </h2>
+              <div className="flex items-center space-x-2">
+                {selectedCategory !== "all" && (
+                  <button
+                    type="button"
+                    onClick={backToCategoryContainers}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-black mr-1 flex items-center space-x-1.5 text-xs font-bold border border-slate-200 transition-all active:scale-95 shadow-2xs"
+                    title="Back to Categories"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Categories</span>
+                  </button>
+                )}
+                <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                  {selectedCategory !== "all" ? (
+                    <>
+                      <span>{CATEGORY_META[selectedCategory]?.icon || "📁"}</span>
+                      <span>{selectedCategory}</span>
+                    </>
+                  ) : (
+                    <span>Learn</span>
+                  )}
+                </h2>
+              </div>
               <p className="text-xs text-slate-500">
-                {`${filteredVocab.length} verified concepts loaded`}
+                {selectedCategory !== "all"
+                  ? `${currentDeck.length} concepts in flashcard swiper deck`
+                  : `${filteredVocab.length} verified concepts across ${CATEGORY_ORDER.length} categories`}
               </p>
             </div>
 
@@ -1216,192 +1411,375 @@ export default function Home() {
               )}
             </div>
 
-            {/* Category Filter Pills Bar */}
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none text-xs select-none">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("all")}
-                className={`px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all shadow-xs flex items-center space-x-1.5 ${
-                  selectedCategory === "all"
-                    ? "bg-black text-white"
-                    : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>All Categories</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  selectedCategory === "all" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                }`}>
-                  {displayVocab.length}
-                </span>
-              </button>
-
-              {CATEGORY_ORDER.map((catName) => {
-                const count = categoryCounts[catName] || 0;
-                if (count === 0) return null;
-                const isSelected = selectedCategory === catName;
-                const icon = CATEGORY_META[catName]?.icon || CATEGORY_ICONS[catName] || "📁";
-                return (
-                  <button
-                    key={catName}
-                    type="button"
-                    onClick={() => setSelectedCategory(isSelected ? "all" : catName)}
-                    className={`px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-all shadow-xs flex items-center space-x-1.5 ${
-                      isSelected
-                        ? "bg-black text-white font-semibold"
-                        : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-                    }`}
-                  >
-                    <span>{icon}</span>
-                    <span>{catName}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Dedicated Category Banner when a category is selected */}
-            {selectedCategory !== "all" && !searchQuery && (
-              <div className="bg-white border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center space-x-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-black text-white flex items-center justify-center text-xl shadow-xs">
-                    {CATEGORY_META[selectedCategory]?.icon || CATEGORY_ICONS[selectedCategory] || "📁"}
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2.5">
-                      <h3 className="text-lg font-bold text-slate-900 tracking-tight">{selectedCategory}</h3>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
-                        {filteredVocab.length} words
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 font-medium mt-0.5">
-                      {CATEGORY_META[selectedCategory]?.desc || "Verified pedagogical vocabulary category"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory("all")}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
-                >
-                  ← Show All Categories
-                </button>
-              </div>
-            )}
-
-            {/* Word Grid / Category Sections */}
-            {isLoadingVocab ? (
-              <div className="flex items-center space-x-2 text-sm text-slate-500 py-12">
-                <Loader2 className="w-4 h-4 animate-spin text-black" />
-                <span>Loading verified vocabulary records...</span>
-              </div>
-            ) : filteredVocab.length === 0 ? (
-              <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl max-w-xl mx-auto p-8 shadow-sm">
-                <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-slate-900">No words match &ldquo;{searchQuery}&rdquo;</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Try searching by English meaning, Tamil spelling, or native phonetics.
-                </p>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("all");
-                  }}
-                  className="mt-4 bg-black text-white px-4 py-2 rounded-lg text-xs font-medium hover:bg-slate-800"
-                >
-                  Reset Filters
-                </button>
-              </div>
-            ) : selectedCategory === "all" && !searchQuery ? (
-              /* Grouped by Category with Sticky Category Headers */
-              <div className="space-y-12">
-                {Object.entries(groupedVocab).map(([catName, catItems]) => (
-                  <section
-                    key={catName}
-                    id={`cat-${catName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                    className="space-y-4"
-                  >
-                    {/* Sticky Category Section Header */}
-                    <div className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md py-3.5 border-b-2 border-slate-900 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center text-base shadow-xs">
-                          {CATEGORY_META[catName]?.icon || CATEGORY_ICONS[catName] || "📁"}
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                              {catName}
-                            </h3>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white">
-                              {catItems.length} words
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-                            {CATEGORY_META[catName]?.desc || "Verified heritage vocabulary group"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Language distribution badges & direct filter button */}
-                      <div className="flex items-center space-x-2 text-xs">
-                        {(() => {
-                          const badagaCount = catItems.filter((i) => i.language_code === "badaga").length;
-                          const marwariCount = catItems.filter((i) => i.language_code === "marwari").length;
-                          return (
-                            <>
-                              {badagaCount > 0 && (
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-medium">
-                                  Badaga: <strong>{badagaCount}</strong>
-                                </span>
-                              )}
-                              {marwariCount > 0 && (
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-medium">
-                                  Marwari: <strong>{marwariCount}</strong>
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCategory(catName)}
-                          className="text-[11px] font-bold text-black hover:underline px-2.5 py-1 rounded bg-slate-200 hover:bg-slate-300 transition-colors"
-                        >
-                          Focus Category →
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Word cards grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
-                      {catItems.map((item) => renderVocabCard(item))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            ) : (
-              /* Filtered / Search Results grid */
+            {/* Search Result View (when user enters search query) */}
+            {searchQuery ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-lg">
-                      {selectedCategory !== "all" ? CATEGORY_META[selectedCategory]?.icon || "📁" : "🔍"}
-                    </span>
+                    <span className="text-lg">🔍</span>
                     <h3 className="text-base font-bold text-slate-900">
-                      {selectedCategory !== "all" ? selectedCategory : `Search Results for "${searchQuery}"`}
+                      Search Results for &ldquo;{searchQuery}&rdquo;
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    {filteredVocab.length} words found
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {filteredVocab.length} words found
+                    </span>
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="text-xs font-bold text-slate-600 hover:text-black underline"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                </div>
+
+                {filteredVocab.length === 0 ? (
+                  <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl max-w-xl mx-auto p-8 shadow-sm">
+                    <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <h3 className="text-sm font-bold text-slate-900">No words match &ldquo;{searchQuery}&rdquo;</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Try searching by English meaning, Tamil spelling, or native phonetics.
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="mt-4 bg-black text-white px-4 py-2 rounded-lg text-xs font-medium hover:bg-slate-800"
+                    >
+                      Reset Search
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredVocab.map((item) => renderVocabCard(item, false))}
+                  </div>
+                )}
+              </div>
+            ) : selectedCategory === "all" ? (
+              /* =========================================================================
+                 VIEW 2A: CATEGORY CONTAINERS (TILES / FOLDERS / DECKS OVERVIEW)
+                 ========================================================================= */
+              <div className="space-y-6">
+                {/* Intro Title & Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-200">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+                      Browse Category Flashcard Decks
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Select any category container below to enter its Tinder-style swiping deck.
+                    </p>
+                  </div>
+                  <span className="self-start sm:self-auto text-xs font-bold px-3 py-1 rounded-full bg-black text-white shadow-2xs">
+                    {displayVocab.length} Total Verified Concepts
                   </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredVocab.map((item) => renderVocabCard(item))}
+
+                {/* Category Containers Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {CATEGORY_ORDER.map((catName) => {
+                    const catItems = allCategoryDecks[catName] || [];
+                    if (catItems.length === 0) return null;
+                    const meta = CATEGORY_META[catName] || {
+                      icon: CATEGORY_ICONS[catName] || "📁",
+                      desc: "Verified heritage vocabulary group",
+                    };
+                    const previewImages = catItems.filter((i) => i.image_url).slice(0, 4);
+                    const audioCount = catItems.reduce(
+                      (acc, i) =>
+                        acc +
+                        (i.audio_assets?.length || 0) +
+                        (i.badaga_audio_assets?.length || 0) +
+                        (i.marwari_audio_assets?.length || 0),
+                      0
+                    );
+
+                    return (
+                      <div
+                        key={catName}
+                        onClick={() => selectCategoryDeck(catName)}
+                        className="group bg-white border border-slate-200 hover:border-slate-400 rounded-2xl p-5 shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
+                      >
+                        <div>
+                          {/* Top Row: Icon & Counts */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="w-12 h-12 rounded-xl bg-black text-white flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-xs">
+                              {meta.icon}
+                            </div>
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-900 text-white shadow-2xs">
+                                {catItems.length} Cards
+                              </span>
+                              {audioCount > 0 && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  🎙️ {audioCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Category Title & Description */}
+                          <h4 className="text-base font-bold text-slate-900 group-hover:text-black tracking-tight">
+                            {catName}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                            {meta.desc}
+                          </p>
+
+                          {/* Preview Concept Images */}
+                          {previewImages.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Concepts Preview:
+                              </span>
+                              <div className="flex items-center -space-x-2 overflow-hidden">
+                                {previewImages.map((pItem, pIdx) => (
+                                  <img
+                                    key={pIdx}
+                                    src={pItem.image_url}
+                                    alt={pItem.english_meaning}
+                                    className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-2xs"
+                                    loading="lazy"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Footer CTA */}
+                        <div className="pt-2">
+                          <div className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 group-hover:bg-black group-hover:text-white text-slate-700 text-xs font-bold transition-all duration-200 border border-slate-200/80 group-hover:border-black shadow-2xs">
+                            <span>Open Swiper Deck</span>
+                            <span className="transform group-hover:translate-x-1 transition-transform">→</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
+            ) : (
+              /* =========================================================================
+                 VIEW 2B: TINDER-STYLE 1-BY-1 CARD SWIPING DECK FOR SELECTED CATEGORY
+                 ========================================================================= */
+              <div className="space-y-6 max-w-2xl mx-auto">
+                {/* Deck Navigation & Progress Header */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={backToCategoryContainers}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors shadow-2xs"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>All Categories</span>
+                    </button>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-black text-white">
+                        {selectedCategory}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-500">
+                        {Math.min(swiperIndex + 1, currentDeck.length)} / {currentDeck.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                    <div
+                      className="bg-black h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.round(((swiperIndex + 1) / Math.max(1, currentDeck.length)) * 100)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Tinder Swiping Card Area */}
+                {swiperIndex >= currentDeck.length ? (
+                  /* Deck Completed State */
+                  <div className="bg-white border-2 border-slate-900 rounded-2xl p-8 text-center shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="w-16 h-16 rounded-2xl bg-black text-white flex items-center justify-center text-3xl mx-auto shadow-md">
+                      🎉
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Deck Completed!</h3>
+                      <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                        You&apos;ve reviewed all <strong>{currentDeck.length}</strong> concepts in{" "}
+                        <strong className="text-slate-900">{selectedCategory}</strong>.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleResetDeck}
+                        className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-slate-800 shadow-sm transition-all"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Review Again from Card 1</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={backToCategoryContainers}
+                        className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 border border-slate-200 transition-all"
+                      >
+                        <Layers className="w-4 h-4" />
+                        <span>Choose Another Category</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Active Tinder Cards Stack (Shows 1 by 1 with background depth) */
+                  <div className="space-y-5">
+                    <div className="relative w-full select-none">
+                      {/* Card 3 (Bottom background card) */}
+                      {currentDeck[swiperIndex + 2] && (
+                        <div
+                          className="absolute inset-0 pointer-events-none select-none transition-all duration-300"
+                          style={{
+                            transform: "scale(0.92) translateY(20px)",
+                            opacity: 0.35,
+                            zIndex: 1,
+                          }}
+                        >
+                          {renderVocabCard(currentDeck[swiperIndex + 2], true)}
+                        </div>
+                      )}
+
+                      {/* Card 2 (Middle background card) */}
+                      {currentDeck[swiperIndex + 1] && (
+                        <div
+                          className="absolute inset-0 pointer-events-none select-none transition-all duration-300"
+                          style={{
+                            transform: "scale(0.96) translateY(10px)",
+                            opacity: 0.7,
+                            zIndex: 2,
+                          }}
+                        >
+                          {renderVocabCard(currentDeck[swiperIndex + 1], true)}
+                        </div>
+                      )}
+
+                      {/* Card 1 (Top Interactive Tinder Card) */}
+                      {currentDeck[swiperIndex] && (
+                        <div
+                          className="relative cursor-grab active:cursor-grabbing transition-transform duration-150"
+                          style={{
+                            transform:
+                              swipeExitDir === "right"
+                                ? "translateX(120%) rotate(25deg)"
+                                : swipeExitDir === "left"
+                                ? "translateX(-120%) rotate(-25deg)"
+                                : `translate(${dragOffset.x}px, ${dragOffset.y * 0.25}px) rotate(${
+                                    dragOffset.x * 0.04
+                                  }deg)`,
+                            opacity: swipeExitDir ? 0 : 1,
+                            transition: isDragging
+                              ? "none"
+                              : "transform 0.25s ease, opacity 0.25s ease",
+                            zIndex: 10,
+                          }}
+                          onTouchStart={onTouchStart}
+                          onTouchMove={onTouchMove}
+                          onTouchEnd={onTouchEnd}
+                          onMouseDown={onMouseDown}
+                          onMouseMove={onMouseMove}
+                          onMouseUp={onMouseUp}
+                          onMouseLeave={onMouseLeave}
+                        >
+                          {/* Swipe Hint Badges (Like Tinder: NEXT on right drag, SKIP on left drag) */}
+                          {dragOffset.x > 35 && (
+                            <div className="absolute top-4 left-4 z-30 px-3.5 py-1 rounded-lg border-2 border-emerald-500 bg-emerald-50/95 text-emerald-700 font-black text-sm uppercase tracking-widest shadow-md transform -rotate-12 pointer-events-none">
+                              NEXT →
+                            </div>
+                          )}
+                          {dragOffset.x < -35 && (
+                            <div className="absolute top-4 right-4 z-30 px-3.5 py-1 rounded-lg border-2 border-amber-500 bg-amber-50/95 text-amber-700 font-black text-sm uppercase tracking-widest shadow-md transform rotate-12 pointer-events-none">
+                              ← SKIP
+                            </div>
+                          )}
+
+                          {renderVocabCard(currentDeck[swiperIndex], true)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tinder Swiper Action Buttons Bar */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col items-center space-y-2">
+                      <div className="flex items-center justify-center space-x-4">
+                        {/* Previous Button */}
+                        <button
+                          type="button"
+                          onClick={handlePrevCard}
+                          disabled={swiperIndex <= 0}
+                          title="Previous Card (Left Arrow)"
+                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all shadow-xs active:scale-95 ${
+                            swiperIndex <= 0
+                              ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
+                              : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-black hover:scale-105"
+                          }`}
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+
+                        {/* Pronounce Card Audio Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = currentDeck[swiperIndex];
+                            if (current) {
+                              if (current.badaga_audio_assets && current.badaga_audio_assets.length > 0) {
+                                playAudio(current.badaga_audio_assets[0].audio_url);
+                              } else if (current.audio_assets && current.audio_assets.length > 0) {
+                                playAudio(current.audio_assets[0].audio_url);
+                              } else if (current.tamil_meaning) {
+                                speakText(current.tamil_meaning, "ta");
+                              }
+                            }
+                          }}
+                          title="Play Native Pronunciation (Spacebar)"
+                          className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md hover:bg-emerald-700 hover:scale-105 transition-all active:scale-95"
+                        >
+                          <Volume2 className="w-7 h-7" />
+                        </button>
+
+                        {/* Restart Deck Button */}
+                        <button
+                          type="button"
+                          onClick={handleResetDeck}
+                          title="Restart Deck"
+                          className="w-10 h-10 rounded-full bg-white text-slate-500 border border-slate-200 flex items-center justify-center shadow-xs hover:bg-slate-100 hover:text-slate-900 hover:scale-105 transition-all active:scale-95"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+
+                        {/* Next Card Button */}
+                        <button
+                          type="button"
+                          onClick={handleNextCard}
+                          disabled={swiperIndex >= currentDeck.length}
+                          title="Next Card (Right Arrow)"
+                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all shadow-md active:scale-95 ${
+                            swiperIndex >= currentDeck.length
+                              ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
+                              : "bg-black text-white border-black hover:bg-slate-800 hover:scale-105"
+                          }`}
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </button>
+                      </div>
+
+                      {/* Interaction Hint */}
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        💡 Swipe card left/right or use <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">←</kbd> / <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">→</kbd> keyboard arrows
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
