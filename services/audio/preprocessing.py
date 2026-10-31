@@ -111,8 +111,8 @@ class AudioPreprocessor:
             waveform = scipy.signal.resample(waveform, num_samples)
             sr = self.target_sample_rate
 
-        # Apply 80Hz Butterworth High-Pass filter to eliminate mic pops, rumble & DC bias
-        sos = scipy.signal.butter(4, 80.0, btype="highpass", fs=sr, output="sos")
+        # Apply 100Hz Butterworth High-Pass filter to eliminate mic pops, rumble, AC hum & DC bias
+        sos = scipy.signal.butter(4, 100.0, btype="highpass", fs=sr, output="sos")
         waveform = scipy.signal.sosfilt(sos, waveform).astype(np.float32)
 
         # Volume Peak Normalization (target max amplitude 0.90 for uniform dynamic range)

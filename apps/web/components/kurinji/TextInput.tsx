@@ -48,6 +48,7 @@ export default function TextInput({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const shouldListenRef = useRef(false);
 
   const currentSuggestions = SUGGESTIONS[selectedLanguage] || SUGGESTIONS.Badaga;
 
@@ -57,6 +58,14 @@ export default function TextInput({
     if (!SpeechRecognitionClass) {
       setSpeechSupported(false);
     }
+    return () => {
+      shouldListenRef.current = false;
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+    };
   }, []);
 
   const startVoiceDictation = () => {
@@ -68,18 +77,24 @@ export default function TextInput({
     }
 
     if (isListening) {
+      // User explicitly stopped dictation
+      shouldListenRef.current = false;
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch {}
       }
       setIsListening(false);
       return;
     }
 
     try {
+      shouldListenRef.current = true;
       const recognition = new SpeechRecognitionClass();
       recognitionRef.current = recognition;
 
-      recognition.continuous = false;
+      // Continuous listening without auto-closing on silence
+      recognition.continuous = true;
       recognition.interimResults = true;
       // Indian English acoustic profile is best suited for transcribing Indian phonetic sounds
       recognition.lang = "en-IN";
@@ -91,14 +106,15 @@ export default function TextInput({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
         let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + " ";
         }
         const cleanWord = transcript.trim().toLowerCase().replace(/[.,!?;:]/g, "");
         setInputText(cleanWord);
 
-        if (event.results[0].isFinal && cleanWord) {
-          setIsListening(false);
+        // Continuously update without closing the mic
+        const latestResult = event.results[event.results.length - 1];
+        if (latestResult && latestResult.isFinal && cleanWord) {
           onTranslate(cleanWord);
         }
       };
@@ -106,16 +122,33 @@ export default function TextInput({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onerror = (event: any) => {
         console.warn("Speech recognition error:", event.error);
-        setIsListening(false);
+        if (event.error === "no-speech") {
+          // Do not close on natural pause/silence; keep mic active
+          return;
+        }
+        if (event.error === "not-allowed") {
+          shouldListenRef.current = false;
+          setIsListening(false);
+        }
       };
 
       recognition.onend = () => {
-        setIsListening(false);
+        // Automatically restart speech recognition if user hasn't explicitly clicked to stop
+        if (shouldListenRef.current) {
+          try {
+            recognition.start();
+          } catch {
+            // Already restarting or active
+          }
+        } else {
+          setIsListening(false);
+        }
       };
 
       recognition.start();
     } catch (err) {
       console.error("Failed to start speech recognition:", err);
+      shouldListenRef.current = false;
       setIsListening(false);
     }
   };

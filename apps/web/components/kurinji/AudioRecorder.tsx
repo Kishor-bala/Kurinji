@@ -100,6 +100,7 @@ export default function AudioRecorder({
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const audioInputRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const filterNodeRef = useRef<BiquadFilterNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const muteGainRef = useRef<GainNode | null>(null);
   const recordedSamplesRef = useRef<number[]>([]);
@@ -129,6 +130,13 @@ export default function AudioRecorder({
       const source = audioCtx.createMediaStreamSource(stream);
       audioInputRef.current = source;
 
+      // Real-time 100Hz High-Pass Filter node to eliminate mic rumble, AC hum & breath pops
+      const highPassFilter = audioCtx.createBiquadFilter();
+      highPassFilter.type = "highpass";
+      highPassFilter.frequency.value = 100; // 100 Hz cutoff
+      highPassFilter.Q.value = 0.707; // Butterworth response
+      filterNodeRef.current = highPassFilter;
+
       // ScriptProcessor node captures raw audio samples from the microphone
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
@@ -146,7 +154,8 @@ export default function AudioRecorder({
       muteGain.gain.value = 0;
       muteGainRef.current = muteGain;
 
-      source.connect(processor);
+      source.connect(highPassFilter);
+      highPassFilter.connect(processor);
       processor.connect(muteGain);
       muteGain.connect(audioCtx.destination);
       streamRef.current = stream;
@@ -165,6 +174,11 @@ export default function AudioRecorder({
 
   const stopRecording = async () => {
     if (processorRef.current && audioInputRef.current && isRecording) {
+      if (filterNodeRef.current) {
+        try {
+          filterNodeRef.current.disconnect();
+        } catch {}
+      }
       processorRef.current.disconnect();
       audioInputRef.current.disconnect();
       if (muteGainRef.current) {
