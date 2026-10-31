@@ -1,0 +1,55 @@
+# Credentials & Secrets (CRITICAL: Never commit to GitHub)
+Credentials.txt
+.env
+.env*.local
+*.pem
+*.key
+
+# Dependencies & Build Artifacts
+node_modules/
+apps/web/node_modules/
+.next/
+apps/web/.next/
+out/
+build/
+dist/
+.vercel/
+apps/web/.vercel/
+
+# Python Virtual Environments & Packages
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Vector Databases & Heavy Weights (Zero SQLite / Local DBs)
+milvus_vectors.db/
+milvus_data.db/
+qdrant_vectors/
+qdrant_data/
+xlsr-project/
+models/
+storage/
+
+# System & Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

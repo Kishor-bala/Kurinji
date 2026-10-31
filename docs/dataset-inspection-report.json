@@ -1,0 +1,127 @@
+{
+  "workbook_sheets": [
+    "Recordings",
+    "Speakers"
+  ],
+  "recordings_columns": [
+    "Timestamp",
+    "Language",
+    "Pack",
+    "Word ID",
+    "English",
+    "Tamil",
+    "Speaker ID",
+    "Status",
+    "File name",
+    "File link",
+    "Seconds",
+    "Spelling",
+    "Note",
+    "Review",
+    "File ID",
+    "Upload ID"
+  ],
+  "speakers_columns": [
+    "Speaker ID",
+    "Language",
+    "Name",
+    "Village / area",
+    "Gender",
+    "Age band",
+    "Consent",
+    "Registered at",
+    "Device"
+  ],
+  "total_valid_recording_rows": 635,
+  "total_speakers": 22,
+  "total_disk_audio_files": 619,
+  "badaga_audio_files": 343,
+  "marwari_audio_files": 276,
+  "matched_recordings_count": 628,
+  "distinct_matched_audio_files": 619,
+  "unmatched_excel_audio_refs": [],
+  "unmatched_disk_files_count": 0,
+  "duplicate_audio_refs_in_excel": {
+    "BDG_P01_W0047_S05.wav": 2,
+    "BDG_P15_W0701_S04.wav": 2,
+    "BDG_P15_W0719_S04.wav": 2,
+    "BDG_P18_W0891_S03.wav": 2,
+    "MWR_P01_W0002_S08.wav": 2,
+    "MWR_P01_W0025_S08.wav": 2,
+    "MWR_P01_W0001_S10.wav": 2,
+    "MWR_P01_W0014_S11.wav": 2,
+    "MWR_P01_W0032_S11.wav": 2
+  },
+  "rows_without_audio_reference": 7,
+  "missing_audio_samples": [
+    {
+      "row": 124,
+      "language": "Marwari",
+      "word_id": "W0110",
+      "english": "mat",
+      "tamil": "பாய்"
+    },
+    {
+      "row": 132,
+      "language": "Marwari",
+      "word_id": "W0117",
+      "english": "bathroom",
+      "tamil": "குளியலறை"
+    },
+    {
+      "row": 200,
+      "language": "Marwari",
+      "word_id": "W0219",
+      "english": "mortar (ural)",
+      "tamil": "உரல்"
+    },
+    {
+      "row": 360,
+      "language": "Badaga",
+      "word_id": "W0839",
+      "english": "Holi",
+      "tamil": "ஹோலி"
+    },
+    {
+      "row": 532,
+      "language": "Marwari",
+      "word_id": "W0009",
+      "english": "hair",
+      "tamil": "முடி"
+    },
+    {
+      "row": 533,
+      "language": "Marwari",
+      "word_id": "W0010",
+      "english": "stomach",
+      "tamil": "வயிறு"
+    },
+    {
+      "row": 547,
+      "language": "Marwari",
+      "word_id": "W0951",
+      "english": "big",
+      "tamil": "பெரிய"
+    }
+  ],
+  "missing_word_id_count": 0,
+  "missing_english_count": 0,
+  "missing_tamil_count": 0,
+  "language_distribution": {
+    "Badaga": 348,
+    "Marwari": 287
+  },
+  "unique_words_by_language": {
+    "Badaga": 285,
+    "Marwari": 214
+  },
+  "audio_specifications": {
+    "WAV_PCM_16_16000Hz_1ch": 619
+  },
+  "duration_distribution": {
+    "5s - 8s": 74,
+    "3s - 5s": 284,
+    "1s - 3s": 261
+  },
+  "average_duration_seconds": 3.57
+}

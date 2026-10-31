@@ -1,0 +1,18 @@
+[
+  {
+    "id": "lang_badaga",
+    "code": "badaga",
+    "canonical_name": "Badaga",
+    "alternate_names": "Baduga",
+    "status": "active",
+    "word_count": 285
+  },
+  {
+    "id": "lang_marwari",
+    "code": "marwari",
+    "canonical_name": "Marwari",
+    "alternate_names": "Marwadi",
+    "status": "active",
+    "word_count": 214
+  }
+]

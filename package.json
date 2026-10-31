@@ -1,0 +1,15 @@
+{
+  "name": "language-ai-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Voice-based vocabulary learning platform for Badaga and Marwari",
+  "scripts": {
+    "postinstall": "cd apps/web && npm install",
+    "dev": "node scripts/dev.js",
+    "dev:backend": "./start_backend.sh",
+    "dev:frontend": "cd apps/web && npm run dev",
+    "build": "cd apps/web && npm run build",
+    "start": "cd apps/web && npm start",
+    "test": ".venv/bin/pytest tests/"
+  }
+}
