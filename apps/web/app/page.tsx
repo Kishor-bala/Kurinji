@@ -24,6 +24,10 @@ import {
   HelpCircle,
   Volume1,
   Shuffle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
+  X,
 } from "lucide-react";
 import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
 
@@ -282,6 +286,7 @@ export default function Home() {
   // Navigation tabs in left sidebar: tutor, learn
   const [activeTab, setActiveTab] = useState<"tutor" | "learn">("tutor");
   const [selectedLang, setSelectedLang] = useState<"all" | "badaga" | "marwari">("all");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Global Audio Playback State
   const [activeAudioKey, setActiveAudioKey] = useState<string | null>(null);
@@ -964,14 +969,14 @@ export default function Home() {
   const renderVocabCard = (item: VocabularyItem, isSwiperMode = false) => (
     <div
       key={item.id || `${item.language_code}_${item.external_word_id}`}
-      className={`bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs transition-all flex flex-col justify-between space-y-3.5 ${
-        isSwiperMode ? "w-full h-full shadow-xl border-slate-300" : "hover:shadow-md hover:border-slate-300"
+      className={`bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xs transition-all flex flex-col justify-between space-y-3 sm:space-y-3.5 ${
+        isSwiperMode ? "w-full shadow-xl border-slate-300" : "hover:shadow-md hover:border-slate-300"
       }`}
     >
       <div>
         {/* Top Photographic Flashcard Image (100% of all words) */}
         {item.image_url ? (
-          <div className="relative w-full h-44 bg-slate-100 rounded-lg overflow-hidden border border-slate-200/90 mb-3.5 group shadow-inner">
+          <div className="relative w-full h-36 sm:h-44 bg-slate-100 rounded-lg overflow-hidden border border-slate-200/90 mb-3 sm:mb-3.5 group shadow-inner">
             <img
               src={item.image_url}
               alt={`${item.english_meaning} (${item.tamil_meaning})`}
@@ -995,7 +1000,7 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className="relative w-full h-44 bg-slate-100 rounded-lg overflow-hidden border border-slate-200/90 mb-3.5 flex flex-col items-center justify-center text-slate-400">
+          <div className="relative w-full h-36 sm:h-44 bg-slate-100 rounded-lg overflow-hidden border border-slate-200/90 mb-3 sm:mb-3.5 flex flex-col items-center justify-center text-slate-400">
             <BookOpen className="w-8 h-8 text-slate-300 mb-1" />
             <span className="text-xs font-semibold text-slate-500 capitalize">{item.english_meaning}</span>
           </div>
@@ -1170,27 +1175,51 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans antialiased overflow-hidden">
+      {/* Mobile Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-xs z-40 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* =========================================================================
           LEFT PANEL / SIDEBAR (All Navigation in Left Panel, strictly 2 tabs)
           ========================================================================= */}
-      <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 select-none z-20">
+      <aside
+        className={`${
+          isSidebarOpen
+            ? "translate-x-0 w-72 md:w-64 lg:w-72"
+            : "-translate-x-full md:translate-x-0 md:w-0 md:border-r-0 md:overflow-hidden md:opacity-0 md:pointer-events-none"
+        } fixed md:relative inset-y-0 left-0 z-50 md:z-20 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 select-none shadow-2xl md:shadow-none transition-all duration-300 ease-in-out`}
+      >
         <div>
           {/* Brand Header */}
-          <div className="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-5 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">
-                V
+                K
               </div>
               <div>
-                <h1 className="font-semibold text-slate-900 text-sm tracking-tight leading-none">
-                  VaniVoice
+                <h1 className="font-bold text-slate-900 text-sm tracking-tight leading-none">
+                  KURINJI
                 </h1>
-                <p className="text-[11px] text-slate-500 mt-1">Heritage Language AI</p>
+                <p className="text-[11px] text-slate-500 mt-1">Indigenous Hill Speech</p>
               </div>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-              v1.0
-            </span>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                v1.0
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                title="Hide Left Panel"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Target Language Switcher (Left Panel) */}
@@ -1263,7 +1292,12 @@ export default function Home() {
 
             {/* TAB 1: AI TUTOR */}
             <button
-              onClick={() => setActiveTab("tutor")}
+              onClick={() => {
+                setActiveTab("tutor");
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                 activeTab === "tutor"
                   ? "bg-black text-white shadow-sm"
@@ -1276,7 +1310,12 @@ export default function Home() {
 
             {/* TAB 2: LEARN */}
             <button
-              onClick={() => setActiveTab("learn")}
+              onClick={() => {
+                setActiveTab("learn");
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                 activeTab === "learn"
                   ? "bg-black text-white shadow-sm"
@@ -1286,7 +1325,6 @@ export default function Home() {
               <BookOpen className="w-4 h-4 shrink-0" />
               <span className="font-semibold">Learn</span>
             </button>
-
           </div>
         </div>
 
@@ -1303,43 +1341,53 @@ export default function Home() {
       {/* =========================================================================
           MAIN CONTENT AREA (Right of Sidebar, Clean Light Theme)
           ========================================================================= */}
-      <main className="flex-1 h-full overflow-y-auto bg-slate-50 flex flex-col">
+      <main className="flex-1 h-full overflow-y-auto bg-slate-50 flex flex-col w-full min-w-0">
         {/* Top Header Bar for Learn View */}
         {activeTab === "learn" && (
-          <header className="h-16 border-b border-slate-200 bg-white px-6 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-10">
-            <div>
-              <div className="flex items-center space-x-2">
-                {selectedCategory !== "all" && (
-                  <button
-                    type="button"
-                    onClick={backToCategoryContainers}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-black mr-1 flex items-center space-x-1.5 text-xs font-bold border border-slate-200 transition-all active:scale-95 shadow-2xs"
-                    title="Back to Categories"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Categories</span>
-                  </button>
-                )}
-                <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <header className="min-h-14 sm:h-16 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between shrink-0 sticky top-0 z-10 w-full">
+            <div className="flex items-center min-w-0 space-x-2 sm:space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 hover:text-black transition-colors shrink-0"
+                title={isSidebarOpen ? "Hide left panel" : "Show left panel"}
+              >
+                {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+              </button>
+
+              {selectedCategory !== "all" && (
+                <button
+                  type="button"
+                  onClick={backToCategoryContainers}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-black flex items-center space-x-1 text-xs font-bold border border-slate-200 transition-all active:scale-95 shadow-2xs shrink-0"
+                  title="Back to Categories"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Categories</span>
+                </button>
+              )}
+
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center space-x-1.5 truncate">
                   {selectedCategory !== "all" ? (
                     <>
                       <span>{CATEGORY_META[selectedCategory]?.icon || "📁"}</span>
-                      <span>{selectedCategory}</span>
+                      <span className="truncate">{selectedCategory}</span>
                     </>
                   ) : (
                     <span>Learn</span>
                   )}
                 </h2>
+                <p className="text-[10px] sm:text-xs text-slate-500 truncate">
+                  {selectedCategory !== "all"
+                    ? `${currentDeck.length} flashcards in deck`
+                    : `${filteredVocab.length} concepts across ${CATEGORY_ORDER.length} categories`}
+                </p>
               </div>
-              <p className="text-xs text-slate-500">
-                {selectedCategory !== "all"
-                  ? `${currentDeck.length} concepts in flashcard swiper deck`
-                  : `${filteredVocab.length} verified concepts across ${CATEGORY_ORDER.length} categories`}
-              </p>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200">
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-slate-100 text-slate-700 font-medium border border-slate-200">
                 {selectedLang === "all" ? "All Languages" : selectedLang === "badaga" ? "Badaga" : "Marwari"}
               </span>
             </div>
@@ -1354,6 +1402,8 @@ export default function Home() {
             <KurinjiAITutor
               initialLanguage={selectedLang === "marwari" ? "Marwari" : "Badaga"}
               onLanguageChange={(lang) => setSelectedLang(lang.toLowerCase() as "badaga" | "marwari")}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              isSidebarOpen={isSidebarOpen}
             />
           </div>
         )}
@@ -1362,9 +1412,9 @@ export default function Home() {
             VIEW 2: LEARN TAB
             ===================================================================== */}
         {activeTab === "learn" && (
-          <div className="flex-1 p-6 sm:p-8 space-y-6">
+          <div className="flex-1 p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
             {/* Search Input Bar */}
-            <div className="max-w-3xl flex items-center space-x-3">
+            <div className="w-full max-w-2xl flex items-center space-x-2 sm:space-x-3">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -1378,7 +1428,7 @@ export default function Home() {
                       ? "⚡ Matching voice with noise cancellation & vector similarity..."
                       : "Search by Badaga, Tamil, English, or Word ID (e.g., 'mande', 'தலை', 'W0001')..."
                   }
-                  className={`w-full bg-white border rounded-lg pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black shadow-sm ${
+                  className={`w-full bg-white border rounded-lg pl-10 pr-4 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black focus:border-black shadow-xs ${
                     isDictRecording ? "border-rose-500 ring-1 ring-rose-500" : "border-slate-300"
                   }`}
                 />
@@ -1475,7 +1525,7 @@ export default function Home() {
                 </div>
 
                 {/* Category Containers Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 w-full">
                   {CATEGORY_ORDER.map((catName) => {
                     const catItems = allCategoryDecks[catName] || [];
                     if (catItems.length === 0) return null;
@@ -1497,7 +1547,7 @@ export default function Home() {
                       <div
                         key={catName}
                         onClick={() => selectCategoryDeck(catName)}
-                        className="group bg-white border border-slate-200 hover:border-slate-400 rounded-2xl p-5 shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
+                        className="group bg-white border border-slate-200 hover:border-slate-400 rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-3 sm:space-y-4"
                       >
                         <div>
                           {/* Top Row: Icon & Counts */}
@@ -1562,9 +1612,9 @@ export default function Home() {
               /* =========================================================================
                  VIEW 2B: TINDER-STYLE 1-BY-1 CARD SWIPING DECK FOR SELECTED CATEGORY
                  ========================================================================= */
-              <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-4 sm:space-y-5 max-w-xl mx-auto w-full px-0 sm:px-2">
                 {/* Deck Navigation & Progress Header */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
@@ -1709,21 +1759,21 @@ export default function Home() {
                     </div>
 
                     {/* Tinder Swiper Action Buttons Bar */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col items-center space-y-2">
-                      <div className="flex items-center justify-center space-x-4">
+                    <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col items-center space-y-2">
+                      <div className="flex items-center justify-center space-x-3 sm:space-x-4">
                         {/* Previous Button */}
                         <button
                           type="button"
                           onClick={handlePrevCard}
                           disabled={swiperIndex <= 0}
                           title="Previous Card (Left Arrow)"
-                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all shadow-xs active:scale-95 ${
+                          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center transition-all shadow-xs active:scale-95 ${
                             swiperIndex <= 0
                               ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
                               : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-black hover:scale-105"
                           }`}
                         >
-                          <ChevronLeft className="w-6 h-6" />
+                          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                         </button>
 
                         {/* Pronounce Card Audio Button */}
@@ -1742,9 +1792,9 @@ export default function Home() {
                             }
                           }}
                           title="Play Native Pronunciation (Spacebar)"
-                          className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md hover:bg-emerald-700 hover:scale-105 transition-all active:scale-95"
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md hover:bg-emerald-700 hover:scale-105 transition-all active:scale-95"
                         >
-                          <Volume2 className="w-7 h-7" />
+                          <Volume2 className="w-6 h-6 sm:w-7 sm:h-7" />
                         </button>
 
                         {/* Restart Deck Button */}
@@ -1752,7 +1802,7 @@ export default function Home() {
                           type="button"
                           onClick={handleResetDeck}
                           title="Restart Deck"
-                          className="w-10 h-10 rounded-full bg-white text-slate-500 border border-slate-200 flex items-center justify-center shadow-xs hover:bg-slate-100 hover:text-slate-900 hover:scale-105 transition-all active:scale-95"
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-slate-500 border border-slate-200 flex items-center justify-center shadow-xs hover:bg-slate-100 hover:text-slate-900 hover:scale-105 transition-all active:scale-95"
                         >
                           <RotateCcw className="w-4 h-4" />
                         </button>
@@ -1763,18 +1813,18 @@ export default function Home() {
                           onClick={handleNextCard}
                           disabled={swiperIndex >= currentDeck.length}
                           title="Next Card (Right Arrow)"
-                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all shadow-md active:scale-95 ${
+                          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center transition-all shadow-md active:scale-95 ${
                             swiperIndex >= currentDeck.length
                               ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed"
                               : "bg-black text-white border-black hover:bg-slate-800 hover:scale-105"
                           }`}
                         >
-                          <ChevronRight className="w-6 h-6" />
+                          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
                         </button>
                       </div>
 
                       {/* Interaction Hint */}
-                      <p className="text-[11px] text-slate-400 font-medium">
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium text-center">
                         💡 Swipe card left/right or use <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">←</kbd> / <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">→</kbd> keyboard arrows
                       </p>
                     </div>

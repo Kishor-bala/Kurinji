@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Database, Mic, Keyboard } from "lucide-react";
+import { Database, Mic, Keyboard, Menu } from "lucide-react";
 import KurinjiLogo from "./KurinjiLogo";
 import AudioRecorder from "./AudioRecorder";
 import TextInput from "./TextInput";
@@ -22,11 +22,15 @@ interface BackendInfo {
 interface KurinjiAITutorProps {
   initialLanguage?: "Badaga" | "Marwari";
   onLanguageChange?: (lang: "Badaga" | "Marwari") => void;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
 export default function KurinjiAITutor({
   initialLanguage = "Badaga",
   onLanguageChange,
+  onToggleSidebar,
+  isSidebarOpen = true,
 }: KurinjiAITutorProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<"Badaga" | "Marwari">(initialLanguage);
   const [inputMode, setInputMode] = useState<"text" | "voice">("text");
@@ -130,6 +134,28 @@ export default function KurinjiAITutor({
       {/* Top Header */}
       <header className="app-header">
         <div className="brand-group">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="sidebar-toggle-btn"
+              title={isSidebarOpen ? "Hide left panel" : "Show left panel"}
+              style={{
+                background: "none",
+                border: "1px solid var(--border-color)",
+                borderRadius: "8px",
+                padding: "6px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-main)",
+                marginRight: "4px",
+              }}
+            >
+              <Menu size={18} />
+            </button>
+          )}
           <KurinjiLogo size={36} />
           <div className="brand-meta">
             <div className="brand-title-row">

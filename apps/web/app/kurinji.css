@@ -978,3 +978,65 @@
 .vocab-table tr:hover {
   background: #f8fafc;
 }
+
+/* ==========================================================================
+   Responsive adjustments for mobile screens
+   ========================================================================== */
+@media (max-width: 768px) {
+  .kurinji-app-container {
+    padding: 12px !important;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .brand-group {
+    justify-content: flex-start;
+  }
+
+  .header-controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .translator-split-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .main-content {
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .translator-panel {
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .input-mode-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    text-align: center;
+  }
+
+  .mode-tab-btn {
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  .manager-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VaniVoice | Badaga & Marwari Voice Vocabulary Learning Platform",
+  title: "KURINJI | Badaga & Marwari Voice Vocabulary Learning Platform",
   description: "AI-Powered Voice-Based Vocabulary Learning Platform supporting Badaga and Marwari languages using XLS-R acoustic embeddings, dual vector stores, and grounded AI tutor.",
 };
 
