@@ -77,17 +77,90 @@ export async function POST(request: NextRequest) {
     );
 
     const first = matched[0];
-    const shortText = first
-      ? `In ${first.language_name}, ${first.english_meaning} is ${first.tamil_meaning}.`
-      : `I heard: "${transcribedText || "your voice input"}". Let's learn more heritage vocabulary together!`;
+    let tutorMessage = "";
+
+    // Generate intelligent AI tutor response using Groq
+    if (groqKey && transcribedText) {
+      try {
+        const vocabContext = matched
+          .slice(0, 5)
+          .map(
+            (v) =>
+              `- ${v.english_meaning} (${v.tamil_meaning}) = Oral: ${v.source_word || "spoken"} [${v.external_word_id}]`
+          )
+          .join("\n");
+
+        const prompt = `You are Kurinji AI, a warm and pedagogical heritage language tutor for Badaga and Marwari.
+User spoke via microphone: "${transcribedText}".
+Relevant verified canonical records:
+${vocabContext || "No exact keyword match in verified database."}
+
+Provide a concise, encouraging 2-3 sentence answer explaining the word/concept, its Tamil meaning, and how to pronounce it in ${languageCode === "marwari" ? "Marwari" : "Badaga"}.`;
+
+        let chatRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-oss-120b",
+            messages: [
+              {
+                role: "system",
+                content: "You are an expert Badaga & Marwari heritage language tutor. Keep replies warm, clear, and educational.",
+              },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 280,
+          }),
+        });
+
+        if (!chatRes.ok) {
+          chatRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${groqKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "openai/gpt-oss-20b",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are an expert Badaga & Marwari heritage language tutor. Keep replies warm, clear, and educational.",
+                },
+                { role: "user", content: prompt },
+              ],
+              temperature: 0.3,
+              max_tokens: 280,
+            }),
+          });
+        }
+
+        if (chatRes.ok) {
+          const chatData = await chatRes.json();
+          tutorMessage = chatData.choices?.[0]?.message?.content || "";
+        }
+      } catch (err) {
+        console.warn("Groq tutor chat error in voice query:", err);
+      }
+    }
+
+    if (!tutorMessage) {
+      tutorMessage = first
+        ? `In ${first.language_name}, "${first.english_meaning}" is "${first.tamil_meaning}" in Tamil, pronounced as "${first.source_word || first.english_meaning}".`
+        : `I heard: "${transcribedText || "your voice input"}". Let's explore more heritage words in Badaga and Marwari together!`;
+    }
 
     const responseTtsUrl = `/api/v1/vocabulary/tts/synthesize?text=${encodeURIComponent(
-      shortText
+      tutorMessage
     )}&lang=en`;
 
     return NextResponse.json({
       transcription: transcribedText || "Voice Input Recorded",
-      message: shortText,
+      message: tutorMessage,
       provider_used: "groq_whisper_grounded",
       verified_vocabulary: matched.slice(0, 3),
       audio_url: first?.audio_assets?.[0]?.audio_url || null,

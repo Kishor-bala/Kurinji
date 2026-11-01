@@ -51,14 +51,14 @@ ${vocabContext || "No exact keyword match in verified database."}
 
 Provide a concise, warm, educational response in English with Tamil meaning and oral pronunciation.`;
 
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      let groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${groqKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-120b",
           messages: [
             {
               role: "system",
@@ -71,6 +71,29 @@ Provide a concise, warm, educational response in English with Tamil meaning and 
           max_tokens: 300,
         }),
       });
+
+      if (!groqRes.ok) {
+        groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-oss-20b",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an expert Badaga & Marwari heritage language tutor. Keep responses focused and pedagogical.",
+              },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+          }),
+        });
+      }
 
       if (groqRes.ok) {
         const groqData = await groqRes.json();
