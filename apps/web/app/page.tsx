@@ -324,8 +324,8 @@ interface ChatMessage {
 }
 
 export default function Home() {
-  // Navigation tabs in left sidebar: tutor, learn, assessment, builder
-  const [activeTab, setActiveTab] = useState<"tutor" | "learn" | "assessment" | "builder">("tutor");
+  // Navigation tabs in left sidebar: learn (primary), assessment, builder, tutor (last)
+  const [activeTab, setActiveTab] = useState<"tutor" | "learn" | "assessment" | "builder">("learn");
   const [selectedLang, setSelectedLang] = useState<string>("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -1980,25 +1980,7 @@ export default function Home() {
               Navigation
             </div>
 
-            {/* TAB 1: AI TUTOR */}
-            <button
-              onClick={() => {
-                setActiveTab("tutor");
-                if (typeof window !== "undefined" && window.innerWidth < 768) {
-                  setIsSidebarOpen(false);
-                }
-              }}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                activeTab === "tutor"
-                  ? "bg-black text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Sparkles className="w-4 h-4 shrink-0" />
-              <span className="font-semibold">AI Tutor</span>
-            </button>
-
-            {/* TAB 2: LEARN */}
+            {/* TAB 1: LEARN (PRIMARY) */}
             <button
               onClick={() => {
                 setActiveTab("learn");
@@ -2016,7 +1998,7 @@ export default function Home() {
               <span className="font-semibold">Learn</span>
             </button>
 
-            {/* TAB 3: ASSESSMENT (SYLLABLE WORD GAME & TEACHER PORTAL) */}
+            {/* TAB 2: ASSESSMENT (SYLLABLE WORD GAME & TEACHER PORTAL) */}
             <button
               onClick={() => {
                 setActiveTab("assessment");
@@ -2039,7 +2021,7 @@ export default function Home() {
               </span>
             </button>
 
-            {/* TAB 4: PACKAGE BUILDER */}
+            {/* TAB 3: PACKAGE BUILDER */}
             <button
               onClick={() => {
                 setActiveTab("builder");
@@ -2060,6 +2042,24 @@ export default function Home() {
               <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
                 Studio
               </span>
+            </button>
+
+            {/* TAB 4: AI TUTOR (LAST) */}
+            <button
+              onClick={() => {
+                setActiveTab("tutor");
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                activeTab === "tutor"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className="font-semibold">AI Tutor</span>
             </button>
           </div>
         </div>
