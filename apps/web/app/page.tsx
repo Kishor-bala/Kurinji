@@ -406,18 +406,32 @@ export default function Home() {
       const saved = localStorage.getItem("kurinji_custom_language_packages");
       if (saved) {
         const parsed: CustomLanguagePackage[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setCustomPackages(parsed);
-          const active = parsed.find((p) => p.isActive);
+        if (Array.isArray(parsed)) {
+          // Explicitly purge Toda from saved packages
+          const filtered = parsed.filter(
+            (p) => p.id !== "toda_heritage" && p.name.toLowerCase() !== "toda"
+          );
+          setCustomPackages(filtered);
+          const active = filtered.find((p) => p.isActive);
           if (active) {
             setActivePackageId(active.id);
+          } else {
+            setActivePackageId("");
           }
+          localStorage.setItem("kurinji_custom_language_packages", JSON.stringify(filtered));
         }
       }
     } catch (e) {
       console.warn("Could not load custom packages from localStorage:", e);
     }
   }, [activeTab]);
+
+  // Reset selectedLang if it was set to toda_heritage
+  useEffect(() => {
+    if (selectedLang === "toda_heritage") {
+      setSelectedLang("all");
+    }
+  }, [selectedLang]);
 
   useEffect(() => {
     fetchLanguages();

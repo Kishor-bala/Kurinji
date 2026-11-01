@@ -80,84 +80,19 @@ const CATEGORIES = [
   "General Vocabulary",
 ];
 
-// Starter template for Toda (தோடா) - Indigenous Nilgiri hill language
-const TODA_STARTER_TEMPLATE: CustomLanguagePackage = {
-  id: "toda_heritage",
-  name: "Toda",
-  nativeName: "தோடா",
-  region: "Nilgiri Upper Plateau, Tamil Nadu",
-  description: "Ancient indigenous Dravidian tribal speech of the Nilgiri hills with rich pastoral and buffalo terminology.",
+// Default empty package draft
+const EMPTY_PACKAGE_TEMPLATE: CustomLanguagePackage = {
+  id: "custom_lang",
+  name: "",
+  nativeName: "",
+  region: "",
+  description: "",
   scriptType: "tamil",
-  speakerName: "Nilgiri Indigenous Community",
-  letters: [
-    { id: "l1", symbol: "அ", phonetic: "a", sampleWord: "modh" },
-    { id: "l2", symbol: "இ", phonetic: "i", sampleWord: "irp" },
-    { id: "l3", symbol: "உ", phonetic: "u", sampleWord: "ush" },
-    { id: "l4", symbol: "க", phonetic: "ka", sampleWord: "kann" },
-    { id: "l5", symbol: "த", phonetic: "tha", sampleWord: "thale" },
-    { id: "l6", symbol: "ப", phonetic: "pa", sampleWord: "pal" },
-    { id: "l7", symbol: "ம", phonetic: "ma", sampleWord: "mar" },
-    { id: "l8", symbol: "ர", phonetic: "ra", sampleWord: "modh" },
-  ],
-  vocabulary: [
-    {
-      id: "w1",
-      nativeWord: "modh",
-      englishMeaning: "Toda traditional barrel-vault settlement",
-      tamilMeaning: "தோடா பாரம்பரிய மந்து",
-      category: "Community & Places",
-      tamilSyllables: "ம + ந் + து",
-      englishSyllables: "M + O + D + H",
-    },
-    {
-      id: "w2",
-      nativeWord: "irp",
-      englishMeaning: "Sacred Nilgiri buffalo",
-      tamilMeaning: "புனித எருமை",
-      category: "Animals & Livestock",
-      tamilSyllables: "எ + ரு + மை",
-      englishSyllables: "I + R + P",
-    },
-    {
-      id: "w3",
-      nativeWord: "thale",
-      englishMeaning: "Head",
-      tamilMeaning: "தலை",
-      category: "Body Parts",
-      tamilSyllables: "த + லை",
-      englishSyllables: "T + H + A + L + E",
-    },
-    {
-      id: "w4",
-      nativeWord: "kann",
-      englishMeaning: "Eye",
-      tamilMeaning: "கண்",
-      category: "Body Parts",
-      tamilSyllables: "க + ண்",
-      englishSyllables: "K + A + N + N",
-    },
-    {
-      id: "w5",
-      nativeWord: "pal",
-      englishMeaning: "Milk",
-      tamilMeaning: "பால்",
-      category: "Food & Grains",
-      tamilSyllables: "பா + ல்",
-      englishSyllables: "P + A + L",
-    },
-    {
-      id: "w6",
-      nativeWord: "kaalu",
-      englishMeaning: "Leg / Foot",
-      tamilMeaning: "கால்",
-      category: "Body Parts",
-      tamilSyllables: "கா + ல்",
-      englishSyllables: "K + A + A + L + U",
-    },
-  ],
+  letters: [],
+  vocabulary: [],
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  isActive: true,
+  isActive: false,
 };
 
 const STORAGE_KEY = "kurinji_custom_language_packages";
@@ -176,7 +111,7 @@ export default function PackageBuilder({
   const [currentStep, setCurrentStep] = useState<"list" | "details" | "letters" | "words" | "test">("list");
 
   // Working package draft in editor
-  const [editingPkg, setEditingPkg] = useState<CustomLanguagePackage>(TODA_STARTER_TEMPLATE);
+  const [editingPkg, setEditingPkg] = useState<CustomLanguagePackage>(EMPTY_PACKAGE_TEMPLATE);
 
   // New Letter Form State
   const [newLetterSymbol, setNewLetterSymbol] = useState("");
@@ -211,20 +146,25 @@ export default function PackageBuilder({
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed: CustomLanguagePackage[] = JSON.parse(saved);
-        if (parsed.length > 0) {
-          setPackages(parsed);
-          const active = parsed.find((p) => p.isActive) || parsed[0];
+        // Purge Toda from saved packages
+        const filtered = parsed.filter(
+          (p) => p.id !== "toda_heritage" && p.name.toLowerCase() !== "toda"
+        );
+        setPackages(filtered);
+        const active = filtered.find((p) => p.isActive) || filtered[0];
+        if (active) {
           setActivePkgId(active.id);
-          return;
+        } else {
+          setActivePkgId("");
         }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        return;
       }
     } catch (e) {
       console.warn("Could not load custom packages from localStorage:", e);
     }
-    // Default fallback to Toda starter template
-    setPackages([TODA_STARTER_TEMPLATE]);
-    setActivePkgId(TODA_STARTER_TEMPLATE.id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([TODA_STARTER_TEMPLATE]));
+    setPackages([]);
+    setActivePkgId("");
   }, []);
 
   // Save packages to localStorage whenever they change
@@ -715,126 +655,148 @@ export default function PackageBuilder({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {packages.map((pkg) => {
-              const isActive = pkg.id === activePkgId;
-              const letterRecordingsCount = pkg.letters.filter((l) => l.audioData).length;
-              const wordRecordingsCount = pkg.vocabulary.filter((w) => w.audioData).length;
+          {packages.length === 0 ? (
+            <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 sm:p-12 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                <FolderPlus className="w-7 h-7 text-slate-500" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h3 className="text-base font-bold text-slate-900">No Custom Packages Yet</h3>
+                <p className="text-xs text-slate-500">
+                  Create your own mother tongue package to record letters, words, and build an adaptive voice dataset.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={startNewPackage}
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-slate-800 shadow-sm transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Language Package</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {packages.map((pkg) => {
+                const isActive = pkg.id === activePkgId;
+                const letterRecordingsCount = pkg.letters.filter((l) => l.audioData).length;
+                const wordRecordingsCount = pkg.vocabulary.filter((w) => w.audioData).length;
 
-              return (
-                <div
-                  key={pkg.id}
-                  className={`bg-white border rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between space-y-4 ${
-                    isActive
-                      ? "border-emerald-500 ring-2 ring-emerald-500/20"
-                      : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">🌿</span>
-                        <h3 className="text-base font-bold text-slate-900">
-                          {pkg.name || "Untitled Package"}
-                        </h3>
-                        {pkg.nativeName && (
-                          <span className="text-xs font-bold text-slate-600">
-                            ({pkg.nativeName})
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`bg-white border rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between space-y-4 ${
+                      isActive
+                        ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                        : "border-slate-200 hover:border-slate-300 hover:shadow-md"
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">🌿</span>
+                          <h3 className="text-base font-bold text-slate-900">
+                            {pkg.name || "Untitled Package"}
+                          </h3>
+                          {pkg.nativeName && (
+                            <span className="text-xs font-bold text-slate-600">
+                              ({pkg.nativeName})
+                            </span>
+                          )}
+                        </div>
+
+                        {isActive && (
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Active</span>
                           </span>
                         )}
                       </div>
 
-                      {isActive && (
-                        <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>Active</span>
-                        </span>
-                      )}
-                    </div>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {pkg.description || "No description provided."}
+                      </p>
 
-                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                      {pkg.description || "No description provided."}
-                    </p>
+                      <div className="text-[11px] text-slate-500 space-y-0.5 pt-1">
+                        <div>
+                          📍 Region: <strong>{pkg.region || "Nilgiri Region"}</strong>
+                        </div>
+                        <div>
+                          ✍️ Script: <span className="capitalize">{pkg.scriptType}</span>
+                        </div>
+                      </div>
 
-                    <div className="text-[11px] text-slate-500 space-y-0.5 pt-1">
-                      <div>
-                        📍 Region: <strong>{pkg.region || "Nilgiri Region"}</strong>
-                      </div>
-                      <div>
-                        ✍️ Script: <span className="capitalize">{pkg.scriptType}</span>
-                      </div>
-                    </div>
-
-                    {/* Stats Pill Row */}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
-                        <span className="block text-sm font-black text-slate-900">
-                          {pkg.letters.length}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          Letters ({letterRecordingsCount} voiced)
-                        </span>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
-                        <span className="block text-sm font-black text-slate-900">
-                          {pkg.vocabulary.length}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          Words ({wordRecordingsCount} voiced)
-                        </span>
+                      {/* Stats Pill Row */}
+                      <div className="grid grid-cols-2 gap-2 pt-2">
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
+                          <span className="block text-sm font-black text-slate-900">
+                            {pkg.letters.length}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Letters ({letterRecordingsCount} voiced)
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
+                          <span className="block text-sm font-black text-slate-900">
+                            {pkg.vocabulary.length}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Words ({wordRecordingsCount} voiced)
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Card Action Row */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center space-x-1.5">
-                      {!isActive ? (
+                    {/* Card Action Row */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center space-x-1.5">
+                        {!isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => activatePackage(pkg)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-black text-white hover:bg-slate-800 transition-colors shadow-2xs"
+                          >
+                            Activate
+                          </button>
+                        ) : (
+                          <span className="text-xs text-emerald-700 font-bold px-2 py-1">
+                            In Use
+                          </span>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => activatePackage(pkg)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-black text-white hover:bg-slate-800 transition-colors shadow-2xs"
+                          onClick={() => editPackage(pkg)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
                         >
-                          Activate
+                          Edit
                         </button>
-                      ) : (
-                        <span className="text-xs text-emerald-700 font-bold px-2 py-1">
-                          In Use
-                        </span>
-                      )}
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => editPackage(pkg)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
-                      >
-                        Edit
-                      </button>
-                    </div>
-
-                    <div className="flex items-center space-x-1">
-                      <button
-                        type="button"
-                        onClick={() => handleExportPackage(pkg)}
-                        title="Download package archive (.json)"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deletePackage(pkg.id)}
-                        title="Delete package"
-                        className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          type="button"
+                          onClick={() => handleExportPackage(pkg)}
+                          title="Download package archive (.json)"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deletePackage(pkg.id)}
+                          title="Delete package"
+                          className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -861,7 +823,7 @@ export default function PackageBuilder({
                 type="text"
                 value={editingPkg.name}
                 onChange={(e) => setEditingPkg({ ...editingPkg, name: e.target.value })}
-                placeholder="e.g. Toda, Kota, Irula, Saurashtra, Konkani..."
+                placeholder="e.g. Kota, Irula, Kurumba, Saurashtra, Konkani..."
                 className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:ring-1 focus:ring-black focus:outline-none"
               />
             </div>
