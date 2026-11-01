@@ -113,176 +113,6 @@ function getEnglishLetters(word: string): string[] {
     .filter(Boolean);
 }
 
-// Default Seed Quizzes for Nilgiris Mother Tongue Classrooms
-const DEFAULT_QUIZZES: AssessmentQuiz[] = [
-  {
-    id: "quiz_badaga_body_nature",
-    title: "Badaga Unit 1: Body Parts & Living World",
-    description: "Introductory syllable assembly assessment covering primary Badaga oral vocabulary.",
-    targetLanguage: "badaga",
-    scriptMode: "ta",
-    enforceSlowMotion: false,
-    assignedClass: "Nilgiris Tribal School - Grade 3",
-    createdAt: Date.now() - 86400000 * 3,
-    words: [
-      {
-        id: "w_kannu",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Kannu",
-        tamil_meaning: "கண்",
-        english_meaning: "Eye",
-        category: "Body Parts",
-        tamil_syllables: "க + ண்",
-      },
-      {
-        id: "w_maram",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Mara",
-        tamil_meaning: "மரம்",
-        english_meaning: "Tree",
-        category: "Nature",
-        tamil_syllables: "ம + ர + ம்",
-      },
-      {
-        id: "w_mooku",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Mooku",
-        tamil_meaning: "மூக்கு",
-        english_meaning: "Nose",
-        category: "Body Parts",
-        tamil_syllables: "மூ + க் + கு",
-      },
-      {
-        id: "w_kaalu",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Kaalu",
-        tamil_meaning: "கால்",
-        english_meaning: "Leg",
-        category: "Body Parts",
-        tamil_syllables: "கா + ல்",
-      },
-      {
-        id: "w_kai",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Kai",
-        tamil_meaning: "கை",
-        english_meaning: "Hand",
-        category: "Body Parts",
-        tamil_syllables: "கை",
-      },
-    ],
-  },
-  {
-    id: "quiz_phonics_english",
-    title: "Bilingual Phonics: English Letter Spelling",
-    description: "Evaluates letter-by-letter spelling formulation for bilingual indigenous learners.",
-    targetLanguage: "all",
-    scriptMode: "en",
-    enforceSlowMotion: true,
-    assignedClass: "Nilgiris Bridge Class - Elementary",
-    createdAt: Date.now() - 86400000 * 2,
-    words: [
-      {
-        id: "w_nose",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Mooku",
-        tamil_meaning: "மூக்கு",
-        english_meaning: "NOSE",
-        category: "Body Parts",
-      },
-      {
-        id: "w_tree",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Mara",
-        tamil_meaning: "மரம்",
-        english_meaning: "TREE",
-        category: "Nature",
-      },
-      {
-        id: "w_eye",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Kannu",
-        tamil_meaning: "கண்",
-        english_meaning: "EYE",
-        category: "Body Parts",
-      },
-      {
-        id: "w_hand",
-        language_code: "badaga",
-        language_name: "Badaga",
-        source_word: "Kai",
-        tamil_meaning: "கை",
-        english_meaning: "HAND",
-        category: "Body Parts",
-      },
-    ],
-  },
-];
-
-// Default Gradebook Records
-const DEFAULT_STUDENT_RESULTS: StudentResult[] = [
-  {
-    id: "res_1",
-    studentName: "Kavitha R.",
-    assessmentTitle: "Badaga Unit 1: Body Parts & Living World",
-    language: "Badaga",
-    score: 5,
-    totalWords: 5,
-    percentage: 100,
-    accuracyBadge: "distinction",
-    trickySyllables: [],
-    timeSpentSeconds: 52,
-    completedAt: "2026-10-31 11:20 AM",
-  },
-  {
-    id: "res_2",
-    studentName: "Selvan M.",
-    assessmentTitle: "Badaga Unit 1: Body Parts & Living World",
-    language: "Badaga",
-    score: 4,
-    totalWords: 5,
-    percentage: 80,
-    accuracyBadge: "proficient",
-    trickySyllables: ["மூ"],
-    timeSpentSeconds: 68,
-    completedAt: "2026-10-31 02:45 PM",
-  },
-  {
-    id: "res_3",
-    studentName: "Anand B.",
-    assessmentTitle: "Bilingual Phonics: English Letter Spelling",
-    language: "Bilingual",
-    score: 3,
-    totalWords: 4,
-    percentage: 75,
-    accuracyBadge: "proficient",
-    trickySyllables: ["E"],
-    timeSpentSeconds: 74,
-    completedAt: "2026-11-01 09:15 AM",
-  },
-  {
-    id: "res_4",
-    studentName: "Divya K.",
-    assessmentTitle: "Badaga Unit 1: Body Parts & Living World",
-    language: "Badaga",
-    score: 5,
-    totalWords: 5,
-    percentage: 100,
-    accuracyBadge: "distinction",
-    trickySyllables: [],
-    timeSpentSeconds: 46,
-    completedAt: "2026-11-01 10:30 AM",
-  },
-];
-
 export default function AssessmentCenter({
   vocabulary,
   customPackages,
@@ -299,40 +129,196 @@ export default function AssessmentCenter({
   // Teacher Sub-Tabs: "analytics" | "creator" | "worksheet"
   const [teacherTab, setTeacherTab] = useState<"analytics" | "creator" | "worksheet">("analytics");
 
-  // Quizzes State
-  const [quizzes, setQuizzes] = useState<AssessmentQuiz[]>(() => {
+  // Teacher-created custom quizzes persisted in localStorage
+  const [teacherCustomQuizzes, setTeacherCustomQuizzes] = useState<AssessmentQuiz[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("kurinji_assessment_quizzes");
+        const saved = localStorage.getItem("kurinji_teacher_custom_quizzes");
         if (saved) return JSON.parse(saved);
       } catch {}
     }
-    return DEFAULT_QUIZZES;
+    return [];
   });
 
-  // Student Results / Gradebook State
+  // Real student results logged from actual learner assessment sessions
   const [studentResults, setStudentResults] = useState<StudentResult[]>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("kurinji_gradebook_results");
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed: StudentResult[] = JSON.parse(saved);
+          // Strictly purge any legacy mock/dummy data
+          if (Array.isArray(parsed)) {
+            return parsed.filter(
+              (r) =>
+                r.id !== "res_1" &&
+                r.id !== "res_2" &&
+                r.id !== "res_3" &&
+                r.id !== "res_4" &&
+                !r.id.startsWith("sim_") &&
+                r.studentName !== "Kavitha R." &&
+                r.studentName !== "Selvan M." &&
+                r.studentName !== "Anand B." &&
+                r.studentName !== "Divya K."
+            );
+          }
+        }
       } catch {}
     }
-    return DEFAULT_STUDENT_RESULTS;
+    return [];
   });
 
-  // Persist Quizzes & Results
+  // Persist Teacher Quizzes & Verified Gradebook Results
   useEffect(() => {
     try {
-      localStorage.setItem("kurinji_assessment_quizzes", JSON.stringify(quizzes));
+      localStorage.setItem("kurinji_teacher_custom_quizzes", JSON.stringify(teacherCustomQuizzes));
     } catch {}
-  }, [quizzes]);
+  }, [teacherCustomQuizzes]);
 
   useEffect(() => {
     try {
       localStorage.setItem("kurinji_gradebook_results", JSON.stringify(studentResults));
     } catch {}
   }, [studentResults]);
+
+  // Convert raw vocabulary items into standardized AssessmentWord items
+  const allAvailableWords = useMemo<AssessmentWord[]>(() => {
+    const list: AssessmentWord[] = [];
+
+    // 1. From live canonical vocabulary database records
+    if (Array.isArray(vocabulary)) {
+      vocabulary.forEach((item) => {
+        list.push({
+          id: item.id || `${item.language_code}_${item.external_word_id}`,
+          language_code: item.language_code || "badaga",
+          language_name: item.language_name || (item.language_code === "badaga" ? "Badaga" : "Marwari"),
+          source_word: item.source_word,
+          tamil_meaning: item.tamil_meaning || "",
+          english_meaning: item.english_meaning || "",
+          category: item.category || "General Vocabulary",
+          audio_url: item.audio_url,
+          badaga_audio_assets: item.badaga_audio_assets,
+          audio_assets: item.audio_assets,
+          tamil_syllables: item.tamil_syllables,
+        });
+      });
+    }
+
+    // 2. From user-recorded custom language packages
+    if (Array.isArray(customPackages)) {
+      customPackages.forEach((pkg) => {
+        if (pkg.vocabulary && Array.isArray(pkg.vocabulary)) {
+          pkg.vocabulary.forEach((v) => {
+            list.push({
+              id: `custom_${pkg.id}_${v.id}`,
+              language_code: pkg.id,
+              language_name: pkg.name,
+              source_word: v.nativeWord,
+              tamil_meaning: v.tamilMeaning,
+              english_meaning: v.englishMeaning,
+              category: v.category || "Custom Package",
+              audio_url: v.audioData,
+              tamil_syllables: v.tamilSyllables,
+            });
+          });
+        }
+      });
+    }
+
+    return list;
+  }, [vocabulary, customPackages]);
+
+  // Dynamically assemble production assessments from canonical database records grouped by real categories
+  const autoGeneratedQuizzes = useMemo<AssessmentQuiz[]>(() => {
+    if (!vocabulary || vocabulary.length === 0) return [];
+
+    const quizzesList: AssessmentQuiz[] = [];
+    const groups: Record<
+      string,
+      { langCode: string; langName: string; category: string; words: AssessmentWord[] }
+    > = {};
+
+    vocabulary.forEach((item) => {
+      const langCode = item.language_code || "badaga";
+      const langName = item.language_name || (langCode === "badaga" ? "Badaga" : "Marwari");
+      const cat = item.category || "Core Vocabulary";
+      const key = `${langCode}_${cat}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          langCode,
+          langName,
+          category: cat,
+          words: [],
+        };
+      }
+
+      groups[key].words.push({
+        id: item.id || `${item.language_code}_${item.external_word_id}`,
+        language_code: langCode,
+        language_name: langName,
+        source_word: item.source_word,
+        tamil_meaning: item.tamil_meaning || "",
+        english_meaning: item.english_meaning || "",
+        category: cat,
+        audio_url: item.audio_url,
+        badaga_audio_assets: item.badaga_audio_assets,
+        audio_assets: item.audio_assets,
+        tamil_syllables: item.tamil_syllables,
+      });
+    });
+
+    // Create a real assessment for each canonical category that has at least 3 words
+    Object.entries(groups).forEach(([key, group]) => {
+      if (group.words.length >= 3) {
+        quizzesList.push({
+          id: `canonical_${key}`,
+          title: `${group.langName}: ${group.category} Syllable Assessment`,
+          description: `Phonemic syllable assessment covering ${group.words.length} verified ${group.langName} words in category ${group.category}.`,
+          targetLanguage: group.langCode,
+          scriptMode: "ta",
+          enforceSlowMotion: false,
+          assignedClass: `${group.langName} Heritage Class`,
+          createdAt: Date.now(),
+          words: group.words.slice(0, 12),
+        });
+      }
+    });
+
+    // Create an assessment for any custom language package created by the user
+    customPackages.forEach((pkg) => {
+      if (pkg.vocabulary && pkg.vocabulary.length >= 2) {
+        quizzesList.push({
+          id: `custom_pkg_${pkg.id}`,
+          title: `${pkg.name}: Community Syllable Test`,
+          description: `Syllable assessment compiled from the ${pkg.vocabulary.length} recorded words in custom package "${pkg.name}".`,
+          targetLanguage: pkg.id,
+          scriptMode: pkg.scriptType === "tamil" ? "ta" : "en",
+          enforceSlowMotion: false,
+          assignedClass: `${pkg.name} Language Section`,
+          createdAt: pkg.createdAt || Date.now(),
+          words: pkg.vocabulary.map((v) => ({
+            id: `custom_${pkg.id}_${v.id}`,
+            language_code: pkg.id,
+            language_name: pkg.name,
+            source_word: v.nativeWord,
+            tamil_meaning: v.tamilMeaning,
+            english_meaning: v.englishMeaning,
+            category: v.category || "Custom Vocabulary",
+            audio_url: v.audioData,
+            tamil_syllables: v.tamilSyllables,
+          })),
+        });
+      }
+    });
+
+    return quizzesList;
+  }, [vocabulary, customPackages]);
+
+  // Combined Quizzes: Teacher custom assessments + Real canonical category assessments
+  const allQuizzes = useMemo<AssessmentQuiz[]>(() => {
+    return [...teacherCustomQuizzes, ...autoGeneratedQuizzes];
+  }, [teacherCustomQuizzes, autoGeneratedQuizzes]);
 
   // =========================================================================
   // LEARNER ASSESSMENT TEST RUNNER STATE
@@ -344,7 +330,7 @@ export default function AssessmentCenter({
   const [testStartTime, setTestStartTime] = useState<number>(0);
   const [testCompleted, setTestCompleted] = useState<boolean>(false);
   const [trickySyllablesIdentified, setTrickySyllablesIdentified] = useState<string[]>([]);
-  const [learnerName, setLearnerName] = useState<string>("Learner");
+  const [learnerName, setLearnerName] = useState<string>("");
   const [hasLoggedResult, setHasLoggedResult] = useState<boolean>(false);
 
   // Active Word Assembly Game Inside Quiz
@@ -357,7 +343,7 @@ export default function AssessmentCenter({
   // TEACHER QUIZ CREATOR FORM STATE
   // =========================================================================
   const [creatorTitle, setCreatorTitle] = useState("");
-  const [creatorClass, setCreatorClass] = useState("Nilgiris Heritage Primary - Grade 4");
+  const [creatorClass, setCreatorClass] = useState("Indigenous Language Section");
   const [creatorLang, setCreatorLang] = useState<string>("badaga");
   const [creatorScript, setCreatorScript] = useState<"ta" | "en">("ta");
   const [creatorSlow, setCreatorSlow] = useState(false);
@@ -365,46 +351,13 @@ export default function AssessmentCenter({
   const [creatorSelectedWordIds, setCreatorSelectedWordIds] = useState<string[]>([]);
   const [creatorFeedback, setCreatorFeedback] = useState<string | null>(null);
 
-  // Available words for Quiz Creator (from canonical vocab + custom packages)
-  const allAvailableWords = useMemo<AssessmentWord[]>(() => {
-    const list: AssessmentWord[] = [];
+  // Worksheet Selected Quiz State
+  const [worksheetQuizId, setWorksheetQuizId] = useState<string>("");
 
-    // 1. From canonical database
-    vocabulary.forEach((item) => {
-      list.push({
-        id: item.id || `${item.language_code}_${item.external_word_id}`,
-        language_code: item.language_code || "badaga",
-        language_name: item.language_name || (item.language_code === "badaga" ? "Badaga" : "Marwari"),
-        source_word: item.source_word,
-        tamil_meaning: item.tamil_meaning || "",
-        english_meaning: item.english_meaning || "",
-        category: item.category || "General",
-        audio_url: item.audio_url,
-        badaga_audio_assets: item.badaga_audio_assets,
-        audio_assets: item.audio_assets,
-        tamil_syllables: item.tamil_syllables,
-      });
-    });
-
-    // 2. From custom packages
-    customPackages.forEach((pkg) => {
-      pkg.vocabulary.forEach((v) => {
-        list.push({
-          id: `custom_${pkg.id}_${v.id}`,
-          language_code: pkg.id,
-          language_name: pkg.name,
-          source_word: v.nativeWord,
-          tamil_meaning: v.tamilMeaning,
-          english_meaning: v.englishMeaning,
-          category: v.category || "Custom Package",
-          audio_url: v.audioData,
-          tamil_syllables: v.tamilSyllables,
-        });
-      });
-    });
-
-    return list;
-  }, [vocabulary, customPackages]);
+  const activeWorksheetQuiz = useMemo<AssessmentQuiz | null>(() => {
+    if (allQuizzes.length === 0) return null;
+    return allQuizzes.find((q) => q.id === worksheetQuizId) || allQuizzes[0];
+  }, [allQuizzes, worksheetQuizId]);
 
   // =========================================================================
   // LEARNER ASSESSMENT METHODS
@@ -503,7 +456,6 @@ export default function AssessmentCenter({
         setWordStatus("wrong");
         setFirstAttemptWrong(true);
         setTestStreak(0);
-        // Note tricky syllables for teacher review
         targetUnits.forEach((u) => {
           if (!trickySyllablesIdentified.includes(u)) {
             setTrickySyllablesIdentified((prev) => [...prev, u]);
@@ -536,7 +488,6 @@ export default function AssessmentCenter({
       setCurrentWordIndex(nextIdx);
       loadWordForAssembly(activeQuiz.words[nextIdx], activeQuiz.scriptMode);
     } else {
-      // Completed Assessment!
       setTestCompleted(true);
     }
   };
@@ -557,7 +508,7 @@ export default function AssessmentCenter({
       percentage >= 85 ? "distinction" : percentage >= 60 ? "proficient" : "needs_practice";
 
     const newResult: StudentResult = {
-      id: `res_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `verified_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       studentName: learnerName.trim() || "Student Learner",
       assessmentTitle: activeQuiz.title,
       language:
@@ -565,7 +516,7 @@ export default function AssessmentCenter({
           ? "Badaga"
           : activeQuiz.targetLanguage === "marwari"
           ? "Marwari"
-          : "Indigenous Multilingual",
+          : "Mother Tongue",
       score: testScore,
       totalWords,
       percentage,
@@ -601,7 +552,7 @@ export default function AssessmentCenter({
     const selectedWords = allAvailableWords.filter((w) => creatorSelectedWordIds.includes(w.id));
 
     const newQuiz: AssessmentQuiz = {
-      id: `quiz_custom_${Date.now()}`,
+      id: `quiz_teacher_${Date.now()}`,
       title: creatorTitle.trim(),
       description: `Classroom assessment designed for ${creatorClass} (${selectedWords.length} words)`,
       targetLanguage: creatorLang,
@@ -612,44 +563,20 @@ export default function AssessmentCenter({
       words: selectedWords,
     };
 
-    setQuizzes((prev) => [newQuiz, ...prev]);
+    setTeacherCustomQuizzes((prev) => [newQuiz, ...prev]);
     setCreatorTitle("");
     setCreatorSelectedWordIds([]);
     setCreatorFeedback("✅ Assessment created and published to class roster!");
-    setTimeout(() => setCreatorFeedback(null), 3000);
+    setTimeout(() => setCreatorFeedback(null), 3500);
   };
 
-  const handleDeleteQuiz = (id: string) => {
-    if (confirm("Are you sure you want to delete this assessment?")) {
-      setQuizzes((prev) => prev.filter((q) => q.id !== id));
+  const handleDeleteTeacherQuiz = (id: string) => {
+    if (confirm("Are you sure you want to delete this custom assessment?")) {
+      setTeacherCustomQuizzes((prev) => prev.filter((q) => q.id !== id));
       if (activeQuiz?.id === id) {
         setActiveQuiz(null);
       }
     }
-  };
-
-  const handleSimulateStudent = () => {
-    const names = ["Aravind P.", "Meena S.", "Karthik B.", "Geetha N."];
-    const randName = names[Math.floor(Math.random() * names.length)];
-    const mockQuiz = quizzes[0] || DEFAULT_QUIZZES[0];
-    const total = mockQuiz.words.length || 5;
-    const score = Math.floor(Math.random() * 2) + (total - 1); // high score
-    const pct = Math.round((score / total) * 100);
-
-    const newRes: StudentResult = {
-      id: `sim_${Date.now()}`,
-      studentName: randName,
-      assessmentTitle: mockQuiz.title,
-      language: "Badaga",
-      score,
-      totalWords: total,
-      percentage: pct,
-      accuracyBadge: pct >= 85 ? "distinction" : "proficient",
-      trickySyllables: pct < 100 ? ["ண்"] : [],
-      timeSpentSeconds: Math.floor(Math.random() * 30) + 40,
-      completedAt: "Just now",
-    };
-    setStudentResults((prev) => [newRes, ...prev]);
   };
 
   // Classroom metrics calculations
@@ -668,7 +595,7 @@ export default function AssessmentCenter({
     });
     return Object.entries(freq)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
+      .slice(0, 5)
       .map(([syl, count]) => ({ syl, count }));
   }, [studentResults]);
 
@@ -687,7 +614,7 @@ export default function AssessmentCenter({
             <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center space-x-2">
               <span>Syllable Assessment Suite</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 uppercase tracking-wider">
-                Interactive Word Builder
+                Word Builder
               </span>
             </h1>
             <p className="text-xs text-slate-500">
@@ -767,7 +694,8 @@ export default function AssessmentCenter({
                     <div>
                       <h3 className="text-xs sm:text-sm font-bold text-slate-900">{activeQuiz.title}</h3>
                       <p className="text-[10px] text-slate-400">
-                        {activeQuiz.assignedClass} &bull; {activeQuiz.scriptMode === "en" ? "English Letter Spelling" : "Tamil Script Syllables"}
+                        {activeQuiz.assignedClass} &bull;{" "}
+                        {activeQuiz.scriptMode === "en" ? "English Letter Spelling" : "Tamil Script Syllables"}
                       </p>
                     </div>
                   </div>
@@ -803,7 +731,7 @@ export default function AssessmentCenter({
                   <div
                     className="bg-indigo-600 h-full rounded-full transition-all duration-300"
                     style={{
-                      width: `${((currentWordIndex) / activeQuiz.words.length) * 100}%`,
+                      width: `${(currentWordIndex / activeQuiz.words.length) * 100}%`,
                     }}
                   />
                 </div>
@@ -1078,18 +1006,18 @@ export default function AssessmentCenter({
                       Test Your Mother Tongue Syllable Mastery
                     </h2>
                     <p className="text-xs text-indigo-200 max-w-xl">
-                      Select an assigned assessment below to assemble indigenous words from scrambled orthographic syllables, hear native pronunciations, and earn your mastery score.
+                      Select an assessment below to assemble indigenous words from scrambled syllables, hear native oral pronunciations, and log verified results to the classroom gradebook.
                     </p>
                   </div>
 
-                  {quizzes.length > 0 && (
+                  {allQuizzes.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => startQuiz(quizzes[0])}
+                      onClick={() => startQuiz(allQuizzes[0])}
                       className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center space-x-2 shrink-0 self-start md:self-auto"
                     >
                       <Play className="w-4 h-4 fill-current" />
-                      <span>Start Featured Assessment</span>
+                      <span>Start Primary Assessment</span>
                     </button>
                   )}
                 </div>
@@ -1098,57 +1026,63 @@ export default function AssessmentCenter({
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-indigo-600" />
-                    <span>Available Teacher-Assigned Assessments ({quizzes.length})</span>
+                    <span>Verified Classroom Assessments ({allQuizzes.length})</span>
                   </h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {quizzes.map((quiz) => (
-                      <div
-                        key={quiz.id}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-indigo-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-sm font-bold text-slate-900">{quiz.title}</h4>
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
-                              {quiz.words.length} Words
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 line-clamp-2">{quiz.description}</p>
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                              {quiz.assignedClass}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {quiz.scriptMode === "en" ? "🔤 English Spelling" : "📖 Tamil Syllables"}
-                            </span>
-                            {quiz.enforceSlowMotion && (
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                                🐢 0.65x Slow Motion
+                  {allQuizzes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {allQuizzes.map((quiz) => (
+                        <div
+                          key={quiz.id}
+                          className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-indigo-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-bold text-slate-900">{quiz.title}</h4>
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
+                                {quiz.words.length} Words
                               </span>
-                            )}
+                            </div>
+                            <p className="text-xs text-slate-500 line-clamp-2">{quiz.description}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                {quiz.assignedClass}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {quiz.scriptMode === "en" ? "🔤 English Spelling" : "📖 Tamil Syllables"}
+                              </span>
+                              {quiz.enforceSlowMotion && (
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                  🐢 0.65x Slow Motion
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400">
+                              Language: <strong className="text-slate-700 uppercase">{quiz.targetLanguage}</strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => startQuiz(quiz)}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center space-x-1.5"
+                            >
+                              <span>Start Test</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                          <span className="text-[10px] text-slate-400">
-                            Language: <strong className="text-slate-700 uppercase">{quiz.targetLanguage}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => startQuiz(quiz)}
-                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center space-x-1.5"
-                          >
-                            <span>Start Test</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                      Loading canonical assessments from database...
+                    </div>
+                  )}
                 </div>
 
-                {/* Learner Performance Snapshot */}
+                {/* Real Learner Submissions Leaderboard (Only shown if real submissions exist) */}
                 {studentResults.length > 0 && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
                     <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
@@ -1156,7 +1090,7 @@ export default function AssessmentCenter({
                       <span>Recent Class Submissions &amp; Leaderboard</span>
                     </h3>
                     <div className="divide-y divide-slate-100">
-                      {studentResults.slice(0, 4).map((r) => (
+                      {studentResults.slice(0, 5).map((r) => (
                         <div key={r.id} className="py-2.5 flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-700">
@@ -1169,7 +1103,9 @@ export default function AssessmentCenter({
                           </div>
                           <div className="text-right">
                             <span className="text-xs font-black text-emerald-600">{r.percentage}%</span>
-                            <p className="text-[9px] text-slate-400">{r.score}/{r.totalWords} Correct</p>
+                            <p className="text-[9px] text-slate-400">
+                              {r.score}/{r.totalWords} Correct &bull; {r.completedAt}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -1191,13 +1127,13 @@ export default function AssessmentCenter({
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center space-x-1">
                   <Users className="w-3.5 h-3.5" />
-                  <span>Educator Command Center &bull; Nilgiris Indigenous Primary</span>
+                  <span>Educator Command Center &bull; Indigenous Language Portal</span>
                 </span>
                 <h2 className="text-lg sm:text-xl font-black tracking-tight">
                   Classroom Analytics, Assessment Builder &amp; Worksheets
                 </h2>
                 <p className="text-xs text-slate-400 max-w-xl">
-                  Manage syllable assessments, track struggling phonemes across students, and print offline classroom worksheets for remote indigenous schools.
+                  Manage syllable assessments, track verified student accuracy in real time, and print offline classroom worksheets for community schools.
                 </p>
               </div>
 
@@ -1240,7 +1176,9 @@ export default function AssessmentCenter({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Class Average</span>
-                    <p className="text-2xl font-black text-indigo-600 mt-0.5">{classAverage}%</p>
+                    <p className="text-2xl font-black text-indigo-600 mt-0.5">
+                      {studentResults.length > 0 ? `${classAverage}%` : "—"}
+                    </p>
                     <span className="text-[10px] text-slate-500 font-medium">Syllable Accuracy</span>
                   </div>
 
@@ -1252,8 +1190,8 @@ export default function AssessmentCenter({
 
                   <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Active Quizzes</span>
-                    <p className="text-2xl font-black text-slate-900 mt-0.5">{quizzes.length}</p>
-                    <span className="text-[10px] text-slate-500 font-medium">Assigned to Roster</span>
+                    <p className="text-2xl font-black text-slate-900 mt-0.5">{allQuizzes.length}</p>
+                    <span className="text-[10px] text-slate-500 font-medium">Verified Assessments</span>
                   </div>
 
                   <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -1270,10 +1208,10 @@ export default function AssessmentCenter({
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-emerald-600 font-bold">None identified</span>
+                        <span className="text-xs text-slate-400 font-medium">None recorded</span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-medium">High error rate</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Identified from tests</span>
                   </div>
                 </div>
 
@@ -1282,17 +1220,10 @@ export default function AssessmentCenter({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">Student Assessment Submissions</h3>
-                      <p className="text-xs text-slate-500">Live roster results logged by indigenous learners</p>
+                      <p className="text-xs text-slate-500">Live verified submissions logged by learners</p>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={handleSimulateStudent}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold hover:bg-slate-50 transition-colors"
-                      >
-                        + Demo Submission
-                      </button>
+                    {studentResults.length > 0 && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1304,7 +1235,7 @@ export default function AssessmentCenter({
                       >
                         Clear Entries
                       </button>
-                    </div>
+                    )}
                   </div>
 
                   {studentResults.length > 0 ? (
@@ -1353,7 +1284,10 @@ export default function AssessmentCenter({
                                 {res.trickySyllables.length > 0 ? (
                                   <div className="flex items-center space-x-1">
                                     {res.trickySyllables.map((s, idx) => (
-                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
+                                      <span
+                                        key={idx}
+                                        className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold"
+                                      >
                                         {s}
                                       </span>
                                     ))}
@@ -1372,8 +1306,12 @@ export default function AssessmentCenter({
                       </table>
                     </div>
                   ) : (
-                    <div className="text-center py-10 text-slate-400 text-xs">
-                      No student submissions yet. Learners can take an assessment in Learner Mode to populate this gradebook!
+                    <div className="text-center py-12 text-slate-400 text-xs space-y-1">
+                      <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-600">No student assessment records found</p>
+                      <p className="text-[11px] text-slate-400">
+                        When students complete assessments in Learner Mode, their verified scores, time spent, and tricky syllables will appear in this gradebook.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1503,7 +1441,7 @@ export default function AssessmentCenter({
                             w.english_meaning.toLowerCase().includes(q)
                           );
                         })
-                        .slice(0, 60)
+                        .slice(0, 80)
                         .map((w) => {
                           const isSelected = creatorSelectedWordIds.includes(w.id);
                           return (
@@ -1549,6 +1487,38 @@ export default function AssessmentCenter({
                     </button>
                   </div>
                 </form>
+
+                {/* List of Teacher Custom Quizzes */}
+                {teacherCustomQuizzes.length > 0 && (
+                  <div className="pt-4 border-t border-slate-200 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Your Published Custom Assessments ({teacherCustomQuizzes.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {teacherCustomQuizzes.map((q) => (
+                        <div
+                          key={q.id}
+                          className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">{q.title}</p>
+                            <p className="text-[10px] text-slate-500">
+                              {q.words.length} words &bull; {q.assignedClass}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTeacherQuiz(q.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white transition-colors"
+                            title="Delete custom assessment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1565,92 +1535,110 @@ export default function AssessmentCenter({
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        window.print();
-                      }
-                    }}
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-all shadow-xs"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>Print Worksheet (PDF)</span>
-                  </button>
+                  <div className="flex items-center space-x-3">
+                    {/* Assessment Selector for Worksheet */}
+                    {allQuizzes.length > 0 && (
+                      <select
+                        value={activeWorksheetQuiz?.id || ""}
+                        onChange={(e) => setWorksheetQuizId(e.target.value)}
+                        className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden"
+                      >
+                        {allQuizzes.map((q) => (
+                          <option key={q.id} value={q.id}>
+                            {q.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          window.print();
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-all shadow-xs"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Print Worksheet (PDF)</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Printable Formatted Worksheet Sheet */}
-                <div className="p-6 sm:p-8 border-2 border-dashed border-slate-300 rounded-2xl bg-white space-y-6 print:border-none print:p-0">
-                  {/* Worksheet Header */}
-                  <div className="text-center pb-4 border-b-2 border-slate-900 space-y-1">
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
-                      Nilgiris Mother Tongue Language Assessment
-                    </h2>
-                    <p className="text-xs text-slate-600 font-medium">
-                      Syllable Construction &amp; Phonemic Breakdown Exercise
-                    </p>
-                    <div className="grid grid-cols-3 gap-4 pt-4 text-xs font-semibold text-slate-700">
-                      <div className="text-left">Student Name: _______________________</div>
-                      <div className="text-center">Class: Grade 3 / 4</div>
-                      <div className="text-right">Score: ____ / 10</div>
+                {activeWorksheetQuiz && (
+                  <div className="p-6 sm:p-8 border-2 border-dashed border-slate-300 rounded-2xl bg-white space-y-6 print:border-none print:p-0">
+                    {/* Worksheet Header */}
+                    <div className="text-center pb-4 border-b-2 border-slate-900 space-y-1">
+                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide">
+                        {activeWorksheetQuiz.title}
+                      </h2>
+                      <p className="text-xs text-slate-600 font-medium">
+                        {activeWorksheetQuiz.assignedClass} &bull; Phonemic Syllable Construction Exercise
+                      </p>
+                      <div className="grid grid-cols-3 gap-4 pt-4 text-xs font-semibold text-slate-700">
+                        <div className="text-left">Student Name: _______________________</div>
+                        <div className="text-center">Date: _______________</div>
+                        <div className="text-right">Score: ____ / {activeWorksheetQuiz.words.length}</div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Section A: Syllable Unscramble */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 bg-slate-100 p-2 rounded">
-                      Part A: Unscramble the syllables to form the correct word
-                    </h4>
+                    {/* Section A: Syllable Unscramble */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 bg-slate-100 p-2 rounded">
+                        Part A: Unscramble the syllables to form the correct word
+                      </h4>
 
-                    <div className="space-y-3">
-                      {(quizzes[0]?.words || DEFAULT_QUIZZES[0].words).slice(0, 5).map((w, idx) => {
-                        const syllables = getTamilSyllables(w.tamil_meaning, w.tamil_syllables);
-                        const scrambled = [...syllables].reverse().join("  +  ");
-                        return (
-                          <div
-                            key={w.id}
-                            className="flex items-center justify-between p-3 rounded-lg border border-slate-200 text-xs"
-                          >
-                            <div className="space-y-0.5">
-                              <span className="font-bold text-slate-900">
-                                {idx + 1}. Oral Clue: &ldquo;{w.source_word || w.tamil_meaning}&rdquo; ({w.english_meaning})
-                              </span>
-                              <p className="text-slate-500 font-mono text-[11px]">
-                                Scrambled Syllables: [ <span className="font-bold text-slate-800">{scrambled}</span> ]
-                              </p>
+                      <div className="space-y-3">
+                        {activeWorksheetQuiz.words.slice(0, 8).map((w, idx) => {
+                          const syllables = getTamilSyllables(w.tamil_meaning, w.tamil_syllables);
+                          const scrambled = [...syllables].reverse().join("  +  ");
+                          return (
+                            <div
+                              key={w.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-slate-200 text-xs"
+                            >
+                              <div className="space-y-0.5">
+                                <span className="font-bold text-slate-900">
+                                  {idx + 1}. Oral Clue: &ldquo;{w.source_word || w.tamil_meaning}&rdquo; ({w.english_meaning})
+                                </span>
+                                <p className="text-slate-500 font-mono text-[11px]">
+                                  Scrambled Syllables: [ <span className="font-bold text-slate-800">{scrambled}</span> ]
+                                </p>
+                              </div>
+
+                              <div className="font-mono text-slate-400">
+                                Answer: [ ________________ ]
+                              </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                            <div className="font-mono text-slate-400">
-                              Answer: [ ________________ ]
+                    {/* Section B: Syllable Breakdown Formula */}
+                    <div className="space-y-4 pt-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 bg-slate-100 p-2 rounded">
+                        Part B: Break down each word into its constituent syllables
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {activeWorksheetQuiz.words.slice(0, 6).map((w, idx) => {
+                          const syllables = getTamilSyllables(w.tamil_meaning, w.tamil_syllables);
+                          return (
+                            <div key={w.id} className="p-3 border border-slate-200 rounded-lg">
+                              <strong>
+                                {idx + 1}. {w.tamil_meaning} ({w.english_meaning}):
+                              </strong>{" "}
+                              {syllables.map((_, sIdx) => (sIdx === 0 ? "________" : " + ________"))}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Section B: Syllable Formula */}
-                  <div className="space-y-4 pt-2">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 bg-slate-100 p-2 rounded">
-                      Part B: Break down each word into its constituent syllables
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <div className="p-3 border border-slate-200 rounded-lg">
-                        <strong>1. மரம் (Tree):</strong> ________ + ________ + ________
-                      </div>
-                      <div className="p-3 border border-slate-200 rounded-lg">
-                        <strong>2. கண் (Eye):</strong> ________ + ________
-                      </div>
-                      <div className="p-3 border border-slate-200 rounded-lg">
-                        <strong>3. மூக்கு (Nose):</strong> ________ + ________ + ________
-                      </div>
-                      <div className="p-3 border border-slate-200 rounded-lg">
-                        <strong>4. கால் (Leg):</strong> ________ + ________
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
