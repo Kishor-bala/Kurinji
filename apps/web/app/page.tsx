@@ -1544,10 +1544,19 @@ export default function Home() {
                   </div>
 
                   {/* Target Prompt */}
-                  <div className="text-[11px] text-slate-600 flex items-center justify-between bg-white/80 px-2 py-1 rounded-lg border border-indigo-100">
-                    <span>Spell target word:</span>
-                    <span className="font-black text-indigo-950 text-xs">
-                      {assemblyTargetWord}
+                  <div className="text-[11px] text-slate-600 flex items-center justify-between bg-white/80 px-2.5 py-1.5 rounded-lg border border-indigo-100">
+                    <span className="font-medium text-slate-500">Assemble Word:</span>
+                    <span className="font-black text-xs">
+                      {assemblyStatus === "success" ? (
+                        <span className="text-emerald-700 font-bold flex items-center space-x-1">
+                          <span>✓</span>
+                          <span>{assemblyTargetWord}</span>
+                        </span>
+                      ) : (
+                        <span className="text-indigo-700 font-mono tracking-wider bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                          {assemblyTargetUnits.map(() => "●").join(" ")} ({assemblyTargetUnits.length} {assemblyTargetLang === "ta" ? "Syllables" : "Letters"})
+                        </span>
+                      )}
                     </span>
                   </div>
 

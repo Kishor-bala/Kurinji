@@ -338,6 +338,7 @@ export default function AssessmentCenter({
   const [availableTiles, setAvailableTiles] = useState<{ id: string; char: string }[]>([]);
   const [wordStatus, setWordStatus] = useState<"playing" | "success" | "wrong">("playing");
   const [firstAttemptWrong, setFirstAttemptWrong] = useState<boolean>(false);
+  const [showHint, setShowHint] = useState<boolean>(false);
 
   // =========================================================================
   // TEACHER QUIZ CREATOR FORM STATE
@@ -381,6 +382,7 @@ export default function AssessmentCenter({
     if (!word) return;
     setWordStatus("playing");
     setFirstAttemptWrong(false);
+    setShowHint(false);
     setAssembledTiles([]);
 
     const targetUnits =
@@ -752,15 +754,18 @@ export default function AssessmentCenter({
                   return (
                     <div className="bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5">
                       {/* Oral Language Prompt with Audio Speaker */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Mother Tongue Oral Prompt ({currentWord.language_name}):
-                          </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                        <div className="space-y-2">
                           <div className="flex items-center space-x-2">
-                            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
-                              {currentWord.source_word || currentWord.tamil_meaning}
-                            </h2>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Mother Tongue Oral Prompt ({currentWord.language_name}):
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              Phonemic Assembly
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
                             <button
                               type="button"
                               onClick={() => {
@@ -775,22 +780,66 @@ export default function AssessmentCenter({
                                 }
                               }}
                               title="Listen to native oral pronunciation"
-                              className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 hover:scale-105 transition-all shadow-xs"
+                              className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white flex items-center space-x-2 hover:bg-emerald-700 hover:scale-102 transition-all shadow-xs group"
                             >
-                              <Volume2 className="w-4 h-4" />
+                              <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform animate-pulse" />
+                              <span className="text-xs font-bold">Listen to Oral Word</span>
                             </button>
+
+                            {wordStatus === "success" ? (
+                              <div className="flex items-center space-x-2 animate-in fade-in zoom-in-95">
+                                <span className="text-xl sm:text-2xl font-black text-emerald-700">
+                                  {fullWordTarget}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  ✓ Correct
+                                </span>
+                              </div>
+                            ) : showHint ? (
+                              <div className="flex items-center space-x-2 animate-in fade-in">
+                                <span className="text-lg sm:text-xl font-black text-amber-600 font-mono tracking-wider">
+                                  {fullWordTarget}
+                                </span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                  Hint
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-1.5" title="Listen to audio & assemble tiles below">
+                                {targetUnits.map((_, slotIdx) => (
+                                  <div
+                                    key={slotIdx}
+                                    className="w-8 h-8 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-slate-400 font-mono text-xs font-bold"
+                                  >
+                                    ?
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
+
                           <p className="text-xs text-slate-600">
-                            Meaning: <strong className="text-slate-900">{currentWord.english_meaning}</strong> &bull;{" "}
-                            Tamil: <strong className="text-slate-900">{currentWord.tamil_meaning}</strong>
+                            Concept / Meaning: <strong className="text-slate-900 font-semibold">{currentWord.english_meaning}</strong>
+                            {wordStatus === "success" || showHint ? (
+                              <span> &bull; Target: <strong className="text-slate-900 font-semibold">{currentWord.tamil_meaning || currentWord.source_word}</strong></span>
+                            ) : null}
                           </p>
                         </div>
 
-                        <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
-                          <span className="text-[10px] text-slate-400">Assemble Word:</span>
-                          <span className="text-sm font-black text-indigo-700 tracking-wide font-mono">
-                            {fullWordTarget}
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 space-y-1">
+                          <span className="text-[10px] text-slate-400 font-medium">Assemble:</span>
+                          <span className="text-xs font-bold text-indigo-700 tracking-wide font-mono bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                            {targetUnits.length} {activeQuiz.scriptMode === "en" ? "Letters" : "Syllables"}
                           </span>
+                          {wordStatus !== "success" && (
+                            <button
+                              type="button"
+                              onClick={() => setShowHint(!showHint)}
+                              className="text-[10px] text-amber-700 hover:text-amber-900 underline font-semibold flex items-center space-x-1 mt-1 cursor-pointer"
+                            >
+                              <span>{showHint ? "Hide Hint" : "💡 Need a hint?"}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
