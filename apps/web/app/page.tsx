@@ -28,8 +28,10 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  FolderPlus,
 } from "lucide-react";
 import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
+import PackageBuilder, { CustomLanguagePackage } from "@/components/kurinji/PackageBuilder";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -271,6 +273,42 @@ function BadagaAudioPlayer({
   );
 }
 
+/**
+ * Robust Tamil Grapheme / Syllable segmentation:
+ * Splits words into true orthographic syllables (e.g. "மரம்" -> ["ம", "ர", "ம்"])
+ */
+function getTamilSyllables(tamilWord: string, presetSyllables?: string): string[] {
+  if (presetSyllables && presetSyllables.includes(" + ")) {
+    return presetSyllables.split(" + ").map((s) => s.trim()).filter(Boolean);
+  }
+  if (!tamilWord) return [];
+  if (typeof Intl !== "undefined" && (Intl as any).Segmenter) {
+    try {
+      const segmenter = new (Intl as any).Segmenter("ta", { granularity: "grapheme" });
+      const segments = Array.from(segmenter.segment(tamilWord))
+        .map((s: any) => s.segment.trim())
+        .filter((s: string) => s.length > 0);
+      if (segments.length > 0) return segments;
+    } catch {}
+  }
+  // Regex fallback: Consonant followed by optional virama or vowel matras
+  const matches = tamilWord.match(/[\u0B85-\u0B94]|[\u0B95-\u0BB9][\u0BCB-\u0BCD\u0BBE-\u0BC8\u0BD7]?/g);
+  return matches && matches.length > 0 ? matches : tamilWord.split("");
+}
+
+/**
+ * English Letter extraction:
+ * Splits any word into uppercase A-Z characters (e.g. "maram" -> ["M", "A", "R", "A", "M"])
+ */
+function getEnglishLetters(word: string): string[] {
+  if (!word) return [];
+  return word
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .split("")
+    .filter(Boolean);
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -283,10 +321,20 @@ interface ChatMessage {
 }
 
 export default function Home() {
-  // Navigation tabs in left sidebar: tutor, learn
-  const [activeTab, setActiveTab] = useState<"tutor" | "learn">("tutor");
-  const [selectedLang, setSelectedLang] = useState<"all" | "badaga" | "marwari">("all");
+  // Navigation tabs in left sidebar: tutor, learn, builder
+  const [activeTab, setActiveTab] = useState<"tutor" | "learn" | "builder">("tutor");
+  const [selectedLang, setSelectedLang] = useState<string>("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Custom Language Packages (Mother Tongue Builder)
+  const [customPackages, setCustomPackages] = useState<CustomLanguagePackage[]>([]);
+  const [activePackageId, setActivePackageId] = useState<string>("");
+
+  // Card Literacy Teaching State (Tamil/English switching & letter-by-letter spelling)
+  const [cardScriptMode, setCardScriptMode] = useState<Record<string, "ta" | "en">>({});
+  const [activeSpellCardId, setActiveSpellCardId] = useState<string | null>(null);
+  const [activeSpellIndex, setActiveSpellIndex] = useState<number | null>(null);
+  const spellCancelRef = useRef(false);
 
   // Global Audio Playback State
   const [activeAudioKey, setActiveAudioKey] = useState<string | null>(null);
@@ -351,6 +399,25 @@ export default function Home() {
       }
     } catch {}
   };
+
+  // Load custom packages from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kurinji_custom_language_packages");
+      if (saved) {
+        const parsed: CustomLanguagePackage[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCustomPackages(parsed);
+          const active = parsed.find((p) => p.isActive);
+          if (active) {
+            setActivePackageId(active.id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load custom packages from localStorage:", e);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchLanguages();
@@ -436,6 +503,65 @@ export default function Home() {
         setActiveAudioKey(null);
       }
     });
+  };
+
+  // Helper to pronounce an individual letter or syllable (Tamil or English)
+  const speakSyllable = (syllable: string, lang: "ta" | "en") => {
+    if (!syllable || !syllable.trim()) return;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(syllable.trim());
+      utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
+      utterance.rate = lang === "en" ? 0.8 : 0.85;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      speakText(syllable, lang);
+    }
+  };
+
+  // Helper to sequentially pronounce each letter/syllable then the whole word (e.g. "ma + ra + m = maram")
+  const playSpellSequence = async (
+    cardId: string,
+    syllables: string[],
+    fullWord: string,
+    lang: "ta" | "en",
+    nativeAudioUrl?: string
+  ) => {
+    if (activeSpellCardId === cardId) {
+      spellCancelRef.current = true;
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      setActiveSpellCardId(null);
+      setActiveSpellIndex(null);
+      return;
+    }
+
+    spellCancelRef.current = false;
+    setActiveSpellCardId(cardId);
+
+    // 1. Speak each syllable / letter sequentially with visual illumination
+    for (let i = 0; i < syllables.length; i++) {
+      if (spellCancelRef.current) break;
+      setActiveSpellIndex(i);
+      speakSyllable(syllables[i], lang);
+      await new Promise((r) => setTimeout(r, 680));
+    }
+
+    // 2. Speak full word ("= maram")
+    if (!spellCancelRef.current) {
+      setActiveSpellIndex(-1); // -1 signifies the full word formula badge
+      if (nativeAudioUrl) {
+        playAudio(nativeAudioUrl);
+        await new Promise((r) => setTimeout(r, 950));
+      } else {
+        speakSyllable(fullWord, lang);
+        await new Promise((r) => setTimeout(r, 850));
+      }
+    }
+
+    setActiveSpellCardId(null);
+    setActiveSpellIndex(null);
   };
 
   // AI Tutor Voice Query Recording
@@ -701,7 +827,33 @@ export default function Home() {
   };
 
   // Deduplicate vocabulary when viewing "All Languages" so overlapping concepts are merged into one clean card
-  const displayVocab = useMemo(() => {
+  const displayVocab = useMemo<VocabularyItem[]>(() => {
+    const convertCustomWord = (w: any, pkg: CustomLanguagePackage, idx: number): VocabularyItem => ({
+      id: `custom_${pkg.id}_${w.id}`,
+      external_word_id: `C${String(idx + 1).padStart(3, "0")}`,
+      language_code: pkg.id,
+      language_name: pkg.name + (pkg.nativeName ? ` (${pkg.nativeName})` : ""),
+      category: w.category || "General Vocabulary",
+      source_word: w.nativeWord,
+      badaga_source_word: undefined,
+      marwari_source_word: undefined,
+      tamil_meaning: w.tamilMeaning,
+      english_meaning: w.englishMeaning,
+      tamil_syllables: w.tamilSyllables,
+      audio_assets: w.audioData
+        ? [{ id: `aud_${w.id}`, audio_url: w.audioData, filename: `${w.nativeWord}.webm`, duration: 1.0 }]
+        : [],
+      badaga_audio_assets: [],
+      marwari_audio_assets: [],
+      image_url: undefined,
+    });
+
+    // If a custom language package is selected directly
+    const customMatch = customPackages.find((p) => p.id === selectedLang);
+    if (customMatch) {
+      return customMatch.vocabulary.map((w, idx) => convertCustomWord(w, customMatch, idx));
+    }
+
     if (selectedLang !== "all") {
       return vocabulary.filter((i) => i.language_code === selectedLang);
     }
@@ -739,8 +891,17 @@ export default function Home() {
       }
     });
 
-    return Object.values(unifiedMap);
-  }, [vocabulary, selectedLang]);
+    const result = Object.values(unifiedMap);
+
+    // Also include custom package vocabulary items in "All Languages" view
+    customPackages.forEach((pkg) => {
+      pkg.vocabulary.forEach((w, idx) => {
+        result.push(convertCustomWord(w, pkg, idx));
+      });
+    });
+
+    return result;
+  }, [vocabulary, selectedLang, customPackages]);
 
   // Filter dictionary items by search query and category
   const filteredVocab = useMemo(() => {
@@ -1090,40 +1251,128 @@ export default function Home() {
           </p>
         ) : null}
 
-        {/* Mother Tongue -> Tamil Script Literacy Breakdown (Tamil script only, strictly no English phonetic splitting) */}
-        {item.tamil_syllables && (
-          <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-700 tracking-tight flex items-center space-x-1">
-                <span>📖 Tamil Script Breakdown</span>
-              </span>
-              <span className="text-[9px] font-mono text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                Tamil Syllables
-              </span>
-            </div>
+        {/* Mother Tongue Literacy Teaching: Tamil Script & English Letter Spelling with Audio on Each Letter */}
+        {(() => {
+          const cardId = item.id || `${item.language_code}_${item.external_word_id}`;
+          const currentMode = cardScriptMode[cardId] || "ta";
+          const isEnglishMode = currentMode === "en";
 
-            {/* Syllable Letters Breakdown with + (Tamil script only) */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              {item.tamil_syllables.split(" + ").map((syl, sIdx, arr) => (
-                <React.Fragment key={sIdx}>
-                  <div className="flex items-center justify-center bg-white border border-slate-300 rounded px-2.5 py-1 shadow-xs">
-                    <span className="text-base font-bold text-slate-900 leading-none">
-                      {syl}
-                    </span>
-                  </div>
-                  {sIdx < arr.length - 1 && (
-                    <span className="text-xs font-black text-slate-400 select-none">+</span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+          // Extract letter/syllable units:
+          const tamilLetters = item.tamil_syllables
+            ? item.tamil_syllables.split(" + ").map((s) => s.trim()).filter(Boolean)
+            : getTamilSyllables(item.tamil_meaning || "");
 
-            {/* Syllable Word Formula (Tamil script only) */}
-            <div className="text-[11px] font-medium text-slate-700 bg-white/80 border border-slate-200/80 rounded px-2.5 py-1 flex items-center justify-between">
-              <span>{item.tamil_syllables} = <strong className="text-slate-900 font-bold">{item.tamil_meaning}</strong></span>
+          const englishLetters = getEnglishLetters(item.english_meaning || "");
+          const activeUnits = isEnglishMode ? englishLetters : tamilLetters;
+          const fullWord = isEnglishMode ? (item.english_meaning || "").toUpperCase() : (item.tamil_meaning || "");
+          const isCurrentSpelling = activeSpellCardId === cardId;
+
+          if (activeUnits.length === 0) return null;
+
+          return (
+            <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 space-y-2 transition-all">
+              {/* Header with Title & Mode Switcher Button */}
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight flex items-center space-x-1">
+                  <span>{isEnglishMode ? "🔤 English Spelling Breakdown" : "📖 Tamil Script Breakdown"}</span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCardScriptMode((prev) => ({
+                      ...prev,
+                      [cardId]: isEnglishMode ? "ta" : "en",
+                    }))
+                  }
+                  title={isEnglishMode ? "Switch to Tamil Script" : "Switch to English Spelling"}
+                  className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs transition-all active:scale-95 shrink-0"
+                >
+                  <span>{isEnglishMode ? "🇮🇳 View Tamil" : "🔤 View English"}</span>
+                </button>
+              </div>
+
+              {/* Syllables / Letters Breakdown with dedicated audio button for each individual letter */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {activeUnits.map((unit, uIdx, arr) => {
+                  const isUnitLit = isCurrentSpelling && activeSpellIndex === uIdx;
+                  return (
+                    <React.Fragment key={uIdx}>
+                      <div
+                        className={`group relative inline-flex items-center space-x-1 rounded-lg px-2 py-1 transition-all border shadow-2xs select-none ${
+                          isUnitLit
+                            ? "bg-emerald-600 border-emerald-600 text-white scale-105 shadow-md ring-2 ring-emerald-300"
+                            : "bg-white border-slate-300 text-slate-900 hover:border-slate-400 hover:shadow-xs"
+                        }`}
+                      >
+                        <span className={`text-sm sm:text-base font-black leading-none ${isUnitLit ? "text-white" : "text-slate-900"}`}>
+                          {unit}
+                        </span>
+
+                        {/* Individual letter audio button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            speakSyllable(unit, isEnglishMode ? "en" : "ta");
+                          }}
+                          title={`Listen to letter sound: ${unit}`}
+                          className={`p-0.5 rounded transition-transform active:scale-90 ${
+                            isUnitLit
+                              ? "text-white hover:bg-emerald-700"
+                              : "text-slate-400 hover:text-emerald-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Volume2 className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {uIdx < arr.length - 1 && (
+                        <span className="text-xs font-black text-slate-400 select-none">+</span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {/* Syllable Word Formula & Sequential "Spell & Pronounce" (e.g. ma + ra + m = maram) */}
+              <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg p-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center space-x-1 truncate max-w-[210px] sm:max-w-[260px]">
+                  <span className="text-slate-500 font-mono text-[10px] truncate">
+                    {activeUnits.join(" + ")} =
+                  </span>
+                  <span className={`font-bold ml-1 truncate ${isCurrentSpelling && activeSpellIndex === -1 ? "text-emerald-600 font-black" : "text-slate-900"}`}>
+                    {fullWord}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    playSpellSequence(
+                      cardId,
+                      activeUnits,
+                      fullWord,
+                      isEnglishMode ? "en" : "ta",
+                      !isEnglishMode && item.audio_assets && item.audio_assets.length > 0
+                        ? item.audio_assets[0].audio_url
+                        : undefined
+                    )
+                  }
+                  title="Pronounce each letter one-by-one then the whole word"
+                  className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all active:scale-95 shadow-xs ${
+                    isCurrentSpelling
+                      ? "bg-amber-600 text-white hover:bg-amber-700 ring-2 ring-amber-300"
+                      : "bg-slate-900 text-white hover:bg-slate-800"
+                  }`}
+                >
+                  <Volume2 className={`w-3.5 h-3.5 ${isCurrentSpelling ? "animate-pulse text-amber-200" : ""}`} />
+                  <span>{isCurrentSpelling ? "Stop" : "Spell & Pronounce"}</span>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Bottom Audio Controls */}
@@ -1309,10 +1558,36 @@ export default function Home() {
                   {langCounts.marwari}
                 </span>
               </button>
+
+              {/* Custom Mother Tongue Packages (created by user) */}
+              {customPackages.map((pkg) => (
+                <button
+                  key={pkg.id}
+                  onClick={() => setSelectedLang(pkg.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    selectedLang === pkg.id
+                      ? "bg-black text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <span className="truncate max-w-[130px]">
+                    {pkg.name} {pkg.nativeName ? `(${pkg.nativeName})` : ""}
+                  </span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                      selectedLang === pkg.id
+                        ? "bg-neutral-800 text-white"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    }`}
+                  >
+                    {pkg.vocabulary.length}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* STRICTLY ONLY 2 TABS IN LEFT PANEL */}
+          {/* SIDEBAR NAVIGATION TABS */}
           <div className="px-4 py-4 space-y-1">
             <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 px-1">
               Navigation
@@ -1352,6 +1627,29 @@ export default function Home() {
             >
               <BookOpen className="w-4 h-4 shrink-0" />
               <span className="font-semibold">Learn</span>
+            </button>
+
+            {/* TAB 3: PACKAGE BUILDER */}
+            <button
+              onClick={() => {
+                setActiveTab("builder");
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                activeTab === "builder"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <FolderPlus className="w-4 h-4 shrink-0" />
+                <span className="font-semibold">Package Builder</span>
+              </div>
+              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                Studio
+              </span>
             </button>
           </div>
         </div>
@@ -1848,6 +2146,51 @@ export default function Home() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* =====================================================================
+            VIEW 3: PACKAGE BUILDER TAB (BUILD YOUR OWN MOTHER TONGUE PACKAGE)
+            ===================================================================== */}
+        {activeTab === "builder" && (
+          <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 flex flex-col">
+            {/* Header bar */}
+            <header className="min-h-14 sm:h-16 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between shrink-0 sticky top-0 z-10 w-full shadow-2xs">
+              <div className="flex items-center min-w-0 space-x-2 sm:space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 hover:text-black transition-colors shrink-0"
+                  title={isSidebarOpen ? "Hide left panel" : "Show left panel"}
+                >
+                  {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                </button>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center space-x-1.5 truncate">
+                    <span>🎙️ Mother Tongue Package Builder Studio</span>
+                  </h2>
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">
+                    Create your own indigenous package • Record letters & words • Auto-adapted TTS & STT
+                  </p>
+                </div>
+              </div>
+            </header>
+
+            <div className="p-3 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
+              <PackageBuilder
+                activePackageId={activePackageId}
+                onActivatePackage={(pkg) => {
+                  setActivePackageId(pkg.id);
+                  try {
+                    const saved = localStorage.getItem("kurinji_custom_language_packages");
+                    if (saved) {
+                      const parsed = JSON.parse(saved);
+                      setCustomPackages(parsed);
+                    }
+                  } catch {}
+                }}
+              />
+            </div>
           </div>
         )}
       </main>

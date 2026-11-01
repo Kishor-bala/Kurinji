@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    return new NextResponse(`TTS Error: ${String(error)}`, { status: 500 });
+    console.error("TTS synthesize error:", error);
+    return new NextResponse("Unable to synthesize speech. Please try again.", { status: 500 });
   }
 }
