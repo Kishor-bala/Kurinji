@@ -578,8 +578,7 @@ export default function Home() {
     cardId: string,
     syllables: string[],
     fullWord: string,
-    lang: "ta" | "en",
-    nativeAudioUrl?: string
+    lang: "ta" | "en"
   ) => {
     if (activeSpellCardId === cardId) {
       spellCancelRef.current = true;
@@ -608,17 +607,10 @@ export default function Home() {
       await new Promise((r) => setTimeout(r, 260));
     }
 
-    // 2. Speak full word ("= maram")
+    // 2. Speak full word ("= maram" in Tamil, or "= nose" in English)
     if (!spellCancelRef.current) {
       setActiveSpellIndex(-1); // -1 signifies the full word formula badge
-      if (nativeAudioUrl) {
-        await new Promise<void>((resolve) => {
-          playAudio(nativeAudioUrl);
-          setTimeout(resolve, 950);
-        });
-      } else {
-        await playTtsAudio(fullWord, lang);
-      }
+      await playTtsAudio(fullWord, lang);
       await new Promise((r) => setTimeout(r, 400));
     }
 
@@ -1415,10 +1407,7 @@ export default function Home() {
                       cardId,
                       activeUnits,
                       fullWord,
-                      isEnglishMode ? "en" : "ta",
-                      !isEnglishMode && item.audio_assets && item.audio_assets.length > 0
-                        ? item.audio_assets[0].audio_url
-                        : undefined
+                      isEnglishMode ? "en" : "ta"
                     )
                   }
                   title="Pronounce each letter one-by-one then the whole word"
