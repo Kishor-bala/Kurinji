@@ -464,58 +464,112 @@ export default function Home() {
     });
   };
 
-  // Text-to-speech helper (pronounces English or Tamil using backend synthesis or Web Speech)
-  const speakText = (text: string, lang = "en", key?: string) => {
-    if (!text) return;
-    const trackKey = key || `tts_${lang}_${text}`;
-    setActiveAudioKey(trackKey);
+  // Core resilient audio player for words & letters (returns a Promise that resolves when audio completes)
+  const playTtsAudio = (text: string, lang: "ta" | "en" = "en"): Promise<void> => {
+    return new Promise((resolve) => {
+      const cleanText = text.trim();
+      if (!cleanText) return resolve();
 
-    const directTtsUrl = `${API_BASE}/vocabulary/tts/synthesize?text=${encodeURIComponent(text)}&lang=${lang}`;
-    const audio = new Audio(directTtsUrl);
-    if (audioInstanceRef.current) {
-      audioInstanceRef.current.pause();
-    }
-    audioInstanceRef.current = audio;
+      let isResolved = false;
+      const done = () => {
+        if (isResolved) return;
+        isResolved = true;
+        resolve();
+      };
 
-    audio.onended = () => setActiveAudioKey(null);
-    audio.onerror = () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
-        utterance.rate = 0.95;
-        utterance.onend = () => setActiveAudioKey(null);
-        utterance.onerror = () => setActiveAudioKey(null);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setActiveAudioKey(null);
+      // Priority 1: High-fidelity Server Synthesize Endpoint (with multi-upstream fallbacks)
+      const directTtsUrl = `${API_BASE}/vocabulary/tts/synthesize?text=${encodeURIComponent(cleanText)}&lang=${lang}`;
+      const audio = new Audio(directTtsUrl);
+
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current = null;
       }
-    };
+      audioInstanceRef.current = audio;
 
-    audio.play().catch(() => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
-        utterance.onend = () => setActiveAudioKey(null);
-        utterance.onerror = () => setActiveAudioKey(null);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setActiveAudioKey(null);
-      }
+      audio.onended = () => done();
+
+      // If Server synthesis has network error or blocked, use resilient client fallback
+      audio.onerror = () => {
+        // Priority 2: Direct Google Translate TTS endpoint from client browser
+        const targetLang = lang === "ta" ? "ta" : "en";
+        const directClientUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLang}&q=${encodeURIComponent(cleanText)}`;
+        const fallbackAudio = new Audio(directClientUrl);
+
+        if (audioInstanceRef.current) {
+          audioInstanceRef.current.pause();
+        }
+        audioInstanceRef.current = fallbackAudio;
+
+        fallbackAudio.onended = () => done();
+        fallbackAudio.onerror = () => {
+          // Priority 3: Browser SpeechSynthesis
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            try {
+              window.speechSynthesis.cancel();
+              const utterance = new SpeechSynthesisUtterance(cleanText);
+              utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
+              utterance.rate = lang === "en" ? 0.85 : 0.9;
+              utterance.onend = () => done();
+              utterance.onerror = () => done();
+              window.speechSynthesis.speak(utterance);
+            } catch {
+              done();
+            }
+          } else {
+            done();
+          }
+        };
+
+        fallbackAudio.play().catch(() => {
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            try {
+              window.speechSynthesis.cancel();
+              const utterance = new SpeechSynthesisUtterance(cleanText);
+              utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
+              utterance.onend = () => done();
+              utterance.onerror = () => done();
+              window.speechSynthesis.speak(utterance);
+            } catch {
+              done();
+            }
+          } else {
+            done();
+          }
+        });
+      };
+
+      audio.play().catch((playErr) => {
+        if (audio.onerror) {
+          (audio.onerror as any)(playErr);
+        } else {
+          done();
+        }
+      });
     });
   };
 
+  // Text-to-speech helper (pronounces English or Tamil using backend synthesis or Web Speech)
+  const speakText = async (text: string, lang = "en", key?: string) => {
+    if (!text) return;
+    const trackKey = key || `tts_${lang}_${text}`;
+    setActiveAudioKey(trackKey);
+    try {
+      await playTtsAudio(text, lang as "ta" | "en");
+    } finally {
+      setActiveAudioKey((current) => (current === trackKey ? null : current));
+    }
+  };
+
   // Helper to pronounce an individual letter or syllable (Tamil or English)
-  const speakSyllable = (syllable: string, lang: "ta" | "en") => {
+  const speakSyllable = async (syllable: string, lang: "ta" | "en", key?: string) => {
     if (!syllable || !syllable.trim()) return;
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(syllable.trim());
-      utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
-      utterance.rate = lang === "en" ? 0.8 : 0.85;
-      window.speechSynthesis.speak(utterance);
-    } else {
-      speakText(syllable, lang);
+    const trackKey = key || `syl_${lang}_${syllable}`;
+    setActiveAudioKey(trackKey);
+    try {
+      await playTtsAudio(syllable.trim(), lang);
+    } finally {
+      setActiveAudioKey((current) => (current === trackKey ? null : current));
     }
   };
 
@@ -529,6 +583,10 @@ export default function Home() {
   ) => {
     if (activeSpellCardId === cardId) {
       spellCancelRef.current = true;
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current = null;
+      }
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -544,20 +602,24 @@ export default function Home() {
     for (let i = 0; i < syllables.length; i++) {
       if (spellCancelRef.current) break;
       setActiveSpellIndex(i);
-      speakSyllable(syllables[i], lang);
-      await new Promise((r) => setTimeout(r, 680));
+      await playTtsAudio(syllables[i], lang);
+      if (spellCancelRef.current) break;
+      // Brief natural pause between letters
+      await new Promise((r) => setTimeout(r, 260));
     }
 
     // 2. Speak full word ("= maram")
     if (!spellCancelRef.current) {
       setActiveSpellIndex(-1); // -1 signifies the full word formula badge
       if (nativeAudioUrl) {
-        playAudio(nativeAudioUrl);
-        await new Promise((r) => setTimeout(r, 950));
+        await new Promise<void>((resolve) => {
+          playAudio(nativeAudioUrl);
+          setTimeout(resolve, 950);
+        });
       } else {
-        speakSyllable(fullWord, lang);
-        await new Promise((r) => setTimeout(r, 850));
+        await playTtsAudio(fullWord, lang);
       }
+      await new Promise((r) => setTimeout(r, 400));
     }
 
     setActiveSpellCardId(null);

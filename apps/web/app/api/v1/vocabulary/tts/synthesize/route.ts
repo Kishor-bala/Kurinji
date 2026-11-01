@@ -10,24 +10,48 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Text parameter is required", { status: 400 });
     }
 
+    const cleanText = text.trim();
     const targetLang = lang === "ta" ? "ta" : lang === "hi" ? "hi" : "en";
-    const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLang}&q=${encodeURIComponent(
-      text.trim()
-    )}`;
+    const encoded = encodeURIComponent(cleanText);
 
-    const res = await fetch(googleTtsUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: "https://translate.google.com/",
-      },
-    });
+    // Multi-upstream URLs with automatic fallback
+    const candidateUrls: string[] = [
+      `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLang}&q=${encoded}`,
+      `https://translate.google.com/translate_tts?ie=UTF-8&client=gtx&tl=${targetLang}&q=${encoded}`,
+      `https://translate.googleapis.com/translate_tts?client=gtx&tl=${targetLang}&ie=UTF-8&q=${encoded}`,
+    ];
 
-    if (!res.ok) {
-      return new NextResponse("Failed to synthesize speech", { status: res.status });
+    if (targetLang === "en") {
+      candidateUrls.push(`https://dict.youdao.com/dictvoice?audio=${encoded}&type=2`);
     }
 
-    const audioBuffer = await res.arrayBuffer();
+    let audioBuffer: ArrayBuffer | null = null;
+
+    for (const url of candidateUrls) {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Referer: "https://translate.google.com/",
+          },
+        });
+
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          if (buf && buf.byteLength > 0) {
+            audioBuffer = buf;
+            break;
+          }
+        }
+      } catch {
+        // Try next candidate upstream
+      }
+    }
+
+    if (!audioBuffer) {
+      return new NextResponse("Unable to synthesize speech. Please try again.", { status: 502 });
+    }
 
     return new NextResponse(audioBuffer, {
       headers: {
@@ -40,3 +64,4 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Unable to synthesize speech. Please try again.", { status: 500 });
   }
 }
+
