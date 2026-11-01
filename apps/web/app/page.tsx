@@ -29,6 +29,7 @@ import {
   Menu,
   X,
   FolderPlus,
+  Puzzle,
 } from "lucide-react";
 import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
 import PackageBuilder, { CustomLanguagePackage } from "@/components/kurinji/PackageBuilder";
@@ -336,6 +337,18 @@ export default function Home() {
   const [activeSpellIndex, setActiveSpellIndex] = useState<number | null>(null);
   const spellCancelRef = useRef(false);
 
+  // Slow Motion Audio State (0.65x speed for heritage clarity)
+  const [isSlowAudio, setIsSlowAudio] = useState<boolean>(false);
+
+  // Syllable Assembly Game State
+  const [assemblyCardId, setAssemblyCardId] = useState<string | null>(null);
+  const [assemblyTargetUnits, setAssemblyTargetUnits] = useState<string[]>([]);
+  const [assemblyTargetWord, setAssemblyTargetWord] = useState<string>("");
+  const [assemblyTargetLang, setAssemblyTargetLang] = useState<"ta" | "en">("ta");
+  const [assemblyAssembled, setAssemblyAssembled] = useState<{ id: string; char: string }[]>([]);
+  const [assemblyAvailable, setAssemblyAvailable] = useState<{ id: string; char: string }[]>([]);
+  const [assemblyStatus, setAssemblyStatus] = useState<"playing" | "success" | "wrong">("playing");
+
   // Global Audio Playback State
   const [activeAudioKey, setActiveAudioKey] = useState<string | null>(null);
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
@@ -433,6 +446,14 @@ export default function Home() {
     }
   }, [selectedLang]);
 
+  // Dynamically synchronize active audio playback rate when slow motion is toggled
+  useEffect(() => {
+    if (audioInstanceRef.current) {
+      audioInstanceRef.current.playbackRate = isSlowAudio ? 0.65 : 1.0;
+      audioInstanceRef.current.defaultPlaybackRate = isSlowAudio ? 0.65 : 1.0;
+    }
+  }, [isSlowAudio]);
+
   useEffect(() => {
     fetchLanguages();
     fetchVocabulary();
@@ -469,6 +490,8 @@ export default function Home() {
     setActiveAudioKey(trackKey);
     const fullUrl = url.startsWith("http") ? url : url;
     const audio = new Audio(fullUrl);
+    audio.defaultPlaybackRate = isSlowAudio ? 0.65 : 1.0;
+    audio.playbackRate = isSlowAudio ? 0.65 : 1.0;
     audioInstanceRef.current = audio;
     audio.onended = () => setActiveAudioKey(null);
     audio.onerror = () => setActiveAudioKey(null);
@@ -494,6 +517,8 @@ export default function Home() {
       // Priority 1: High-fidelity Server Synthesize Endpoint (with multi-upstream fallbacks)
       const directTtsUrl = `${API_BASE}/vocabulary/tts/synthesize?text=${encodeURIComponent(cleanText)}&lang=${lang}`;
       const audio = new Audio(directTtsUrl);
+      audio.defaultPlaybackRate = isSlowAudio ? 0.65 : 1.0;
+      audio.playbackRate = isSlowAudio ? 0.65 : 1.0;
 
       if (audioInstanceRef.current) {
         audioInstanceRef.current.pause();
@@ -509,6 +534,8 @@ export default function Home() {
         const targetLang = lang === "ta" ? "ta" : "en";
         const directClientUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLang}&q=${encodeURIComponent(cleanText)}`;
         const fallbackAudio = new Audio(directClientUrl);
+        fallbackAudio.defaultPlaybackRate = isSlowAudio ? 0.65 : 1.0;
+        fallbackAudio.playbackRate = isSlowAudio ? 0.65 : 1.0;
 
         if (audioInstanceRef.current) {
           audioInstanceRef.current.pause();
@@ -523,7 +550,7 @@ export default function Home() {
               window.speechSynthesis.cancel();
               const utterance = new SpeechSynthesisUtterance(cleanText);
               utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
-              utterance.rate = lang === "en" ? 0.85 : 0.9;
+              utterance.rate = isSlowAudio ? 0.55 : (lang === "en" ? 0.85 : 0.9);
               utterance.onend = () => done();
               utterance.onerror = () => done();
               window.speechSynthesis.speak(utterance);
@@ -541,6 +568,7 @@ export default function Home() {
               window.speechSynthesis.cancel();
               const utterance = new SpeechSynthesisUtterance(cleanText);
               utterance.lang = lang === "ta" ? "ta-IN" : "en-US";
+              utterance.rate = isSlowAudio ? 0.55 : (lang === "en" ? 0.85 : 0.9);
               utterance.onend = () => done();
               utterance.onerror = () => done();
               window.speechSynthesis.speak(utterance);
@@ -617,19 +645,121 @@ export default function Home() {
       setActiveSpellIndex(i);
       await playTtsAudio(syllables[i], lang);
       if (spellCancelRef.current) break;
-      // Brief natural pause between letters
-      await new Promise((r) => setTimeout(r, 260));
+      // Brief natural pause between letters (longer in slow motion)
+      await new Promise((r) => setTimeout(r, isSlowAudio ? 450 : 260));
     }
 
     // 2. Speak full word ("= maram" in Tamil, or "= nose" in English)
     if (!spellCancelRef.current) {
       setActiveSpellIndex(-1); // -1 signifies the full word formula badge
       await playTtsAudio(fullWord, lang);
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, isSlowAudio ? 550 : 400));
     }
 
     setActiveSpellCardId(null);
     setActiveSpellIndex(null);
+  };
+
+  // -------------------------------------------------------------
+  // Syllable Assembly Game (Word Builder) Handlers
+  // -------------------------------------------------------------
+  const startAssemblyGame = (
+    cardId: string,
+    units: string[],
+    targetWord: string,
+    lang: "ta" | "en"
+  ) => {
+    // If spell sequence is running, cancel it
+    if (activeSpellCardId) {
+      spellCancelRef.current = true;
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current = null;
+      }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      setActiveSpellCardId(null);
+      setActiveSpellIndex(null);
+    }
+
+    setAssemblyCardId(cardId);
+    setAssemblyTargetUnits(units);
+    setAssemblyTargetWord(targetWord);
+    setAssemblyTargetLang(lang);
+    setAssemblyAssembled([]);
+    setAssemblyStatus("playing");
+
+    // Scramble tiles with unique ids
+    const tiles = units.map((char, index) => ({
+      id: `${char}_${index}_${Math.random().toString(36).substring(2, 7)}`,
+      char,
+    }));
+    const shuffled = [...tiles].sort(() => Math.random() - 0.5);
+    if (shuffled.map((t) => t.char).join("") === units.join("") && units.length > 1) {
+      shuffled.reverse();
+    }
+    setAssemblyAvailable(shuffled);
+  };
+
+  const handlePickAssemblyTile = (tile: { id: string; char: string }) => {
+    if (assemblyStatus === "success") return;
+
+    // Immediately pronounce the selected syllable
+    speakSyllable(tile.char, assemblyTargetLang);
+
+    const newAvailable = assemblyAvailable.filter((t) => t.id !== tile.id);
+    const newAssembled = [...assemblyAssembled, tile];
+    setAssemblyAvailable(newAvailable);
+    setAssemblyAssembled(newAssembled);
+
+    // Evaluate on complete word assembly
+    if (newAssembled.length === assemblyTargetUnits.length) {
+      const assembledWord = newAssembled.map((t) => t.char).join("");
+      const targetWord = assemblyTargetUnits.join("");
+      if (assembledWord.toLowerCase() === targetWord.toLowerCase()) {
+        setAssemblyStatus("success");
+        setTimeout(() => {
+          speakText(assemblyTargetWord, assemblyTargetLang);
+        }, 320);
+      } else {
+        setAssemblyStatus("wrong");
+      }
+    } else {
+      setAssemblyStatus("playing");
+    }
+  };
+
+  const handleReturnAssemblyTile = (tile: { id: string; char: string }) => {
+    const newAssembled = assemblyAssembled.filter((t) => t.id !== tile.id);
+    const newAvailable = [...assemblyAvailable, tile];
+    setAssemblyAssembled(newAssembled);
+    setAssemblyAvailable(newAvailable);
+    setAssemblyStatus("playing");
+  };
+
+  const resetAssemblyGame = () => {
+    if (!assemblyTargetUnits || assemblyTargetUnits.length === 0) return;
+    setAssemblyAssembled([]);
+    setAssemblyStatus("playing");
+    const tiles = assemblyTargetUnits.map((char, index) => ({
+      id: `${char}_${index}_${Math.random().toString(36).substring(2, 7)}`,
+      char,
+    }));
+    const shuffled = [...tiles].sort(() => Math.random() - 0.5);
+    if (shuffled.map((t) => t.char).join("") === assemblyTargetUnits.join("") && assemblyTargetUnits.length > 1) {
+      shuffled.reverse();
+    }
+    setAssemblyAvailable(shuffled);
+  };
+
+  const exitAssemblyGame = () => {
+    setAssemblyCardId(null);
+    setAssemblyTargetUnits([]);
+    setAssemblyTargetWord("");
+    setAssemblyAssembled([]);
+    setAssemblyAvailable([]);
+    setAssemblyStatus("playing");
   };
 
   // AI Tutor Voice Query Recording
@@ -1338,103 +1468,293 @@ export default function Home() {
           if (activeUnits.length === 0) return null;
 
           return (
-            <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 space-y-2 transition-all">
-              {/* Header with Title & Mode Switcher Button */}
-              <div className="flex items-center justify-between gap-1.5">
+            <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 space-y-2.5 transition-all">
+              {/* Header with Title, Slow Motion Toggle, & Script Switcher */}
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
                 <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight flex items-center space-x-1">
                   <span>{isEnglishMode ? "🔤 English Spelling Breakdown" : "📖 Tamil Script Breakdown"}</span>
                 </span>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCardScriptMode((prev) => ({
-                      ...prev,
-                      [cardId]: isEnglishMode ? "ta" : "en",
-                    }))
-                  }
-                  title={isEnglishMode ? "Switch to Tamil Script" : "Switch to English Spelling"}
-                  className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs transition-all active:scale-95 shrink-0"
-                >
-                  <span>{isEnglishMode ? "🇮🇳 View Tamil" : "🔤 View English"}</span>
-                </button>
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  {/* Slow Motion Audio Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsSlowAudio((prev) => !prev)}
+                    title={isSlowAudio ? "Slow Motion ON (0.65x speed). Click for Normal (1.0x)" : "Click to activate Slow Motion (0.65x) pronunciation for maximum clarity"}
+                    className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border transition-all active:scale-95 shadow-2xs ${
+                      isSlowAudio
+                        ? "bg-amber-100 text-amber-950 border-amber-300 ring-1 ring-amber-400"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>{isSlowAudio ? "🐢 0.65x Slow" : "🐰 1.0x"}</span>
+                  </button>
+
+                  {/* Tamil / English Switcher */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCardScriptMode((prev) => ({
+                        ...prev,
+                        [cardId]: isEnglishMode ? "ta" : "en",
+                      }))
+                    }
+                    title={isEnglishMode ? "Switch to Tamil Script" : "Switch to English Spelling"}
+                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 shadow-2xs transition-all active:scale-95"
+                  >
+                    <span>{isEnglishMode ? "🇮🇳 View Tamil" : "🔤 View English"}</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Syllables / Letters Breakdown with dedicated audio button for each individual letter */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {activeUnits.map((unit, uIdx, arr) => {
-                  const isUnitLit = isCurrentSpelling && activeSpellIndex === uIdx;
-                  return (
-                    <React.Fragment key={uIdx}>
-                      <div
-                        className={`group relative inline-flex items-center space-x-1 rounded-lg px-2 py-1 transition-all border shadow-2xs select-none ${
-                          isUnitLit
-                            ? "bg-emerald-600 border-emerald-600 text-white scale-105 shadow-md ring-2 ring-emerald-300"
-                            : "bg-white border-slate-300 text-slate-900 hover:border-slate-400 hover:shadow-xs"
-                        }`}
-                      >
-                        <span className={`text-sm sm:text-base font-black leading-none ${isUnitLit ? "text-white" : "text-slate-900"}`}>
-                          {unit}
-                        </span>
+              {/* Check if Assembly Game is Active for this Card */}
+              {assemblyCardId === cardId ? (
+                <div className="bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/80 border-2 border-indigo-200 rounded-xl p-3 space-y-2.5 shadow-xs transition-all animate-in fade-in zoom-in-95 duration-200">
+                  {/* Game Sub-Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="p-1 rounded-md bg-indigo-600 text-white shadow-2xs">
+                        <Puzzle className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-950">
+                        Syllable Assembly Game
+                      </span>
+                    </div>
 
-                        {/* Individual letter audio button */}
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={resetAssemblyGame}
+                        title="Reshuffle syllables"
+                        className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white border border-slate-200 text-xs transition-all active:scale-95"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exitAssemblyGame}
+                        title="Exit game"
+                        className="p-1 rounded-md text-slate-500 hover:text-rose-600 hover:bg-white border border-slate-200 text-xs transition-all active:scale-95"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Target Prompt */}
+                  <div className="text-[11px] text-slate-600 flex items-center justify-between bg-white/80 px-2 py-1 rounded-lg border border-indigo-100">
+                    <span>Spell target word:</span>
+                    <span className="font-black text-indigo-950 text-xs">
+                      {assemblyTargetWord}
+                    </span>
+                  </div>
+
+                  {/* Assembled Word Dropzone */}
+                  <div className="bg-white border border-indigo-100 rounded-xl p-2.5 shadow-inner">
+                    <div className="text-[9px] font-semibold text-slate-400 mb-1.5 flex items-center justify-between">
+                      <span>YOUR ASSEMBLED WORD:</span>
+                      <span className="text-[8px] text-slate-400">(tap placed letter to return)</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 min-h-[44px]">
+                      {assemblyTargetUnits.map((_, slotIdx) => {
+                        const placedTile = assemblyAssembled[slotIdx];
+                        return placedTile ? (
+                          <button
+                            key={`placed-${placedTile.id}`}
+                            type="button"
+                            onClick={() => handleReturnAssemblyTile(placedTile)}
+                            title="Tap to return to bank"
+                            className={`group px-3 py-1.5 rounded-lg border font-black text-base sm:text-lg shadow-xs transition-all active:scale-95 ${
+                              assemblyStatus === "success"
+                                ? "bg-emerald-600 border-emerald-600 text-white animate-bounce ring-2 ring-emerald-300"
+                                : assemblyStatus === "wrong"
+                                ? "bg-rose-50 border-rose-300 text-rose-800"
+                                : "bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700"
+                            }`}
+                          >
+                            <span>{placedTile.char}</span>
+                          </button>
+                        ) : (
+                          <div
+                            key={`empty-slot-${slotIdx}`}
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-300 text-xs font-mono select-none"
+                          >
+                            {slotIdx + 1}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Status Banner */}
+                  {assemblyStatus === "success" && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between shadow-2xs">
+                      <div className="flex items-center space-x-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <p className="text-[11px] font-bold text-emerald-950">🎉 Correct Assembly!</p>
+                          <p className="text-[9px] text-emerald-800">You mastered this word&apos;s syllable order.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            speakSyllable(unit, isEnglishMode ? "en" : "ta");
-                          }}
-                          title={`Listen to letter sound: ${unit}`}
-                          className={`p-0.5 rounded transition-transform active:scale-90 ${
-                            isUnitLit
-                              ? "text-white hover:bg-emerald-700"
-                              : "text-slate-400 hover:text-emerald-600 hover:bg-slate-100"
-                          }`}
+                          onClick={() => speakText(assemblyTargetWord, assemblyTargetLang)}
+                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 flex items-center space-x-1 shadow-2xs"
                         >
                           <Volume2 className="w-3 h-3" />
+                          <span>Hear</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetAssemblyGame}
+                          className="px-2 py-1 rounded bg-white border border-emerald-300 text-emerald-800 text-[10px] font-bold hover:bg-emerald-100"
+                        >
+                          Play Again
                         </button>
                       </div>
+                    </div>
+                  )}
 
-                      {uIdx < arr.length - 1 && (
-                        <span className="text-xs font-black text-slate-400 select-none">+</span>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
+                  {assemblyStatus === "wrong" && (
+                    <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-800">
+                      <div className="flex items-center space-x-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span className="text-[10px] font-medium">Not quite! Tap any tile above to take it back.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={resetAssemblyGame}
+                        className="text-[10px] font-bold text-rose-700 underline hover:text-rose-900"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
 
-              {/* Syllable Word Formula & Sequential "Spell & Pronounce" (e.g. ma + ra + m = maram) */}
-              <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg p-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-                <div className="flex items-center space-x-1 truncate max-w-[210px] sm:max-w-[260px]">
-                  <span className="text-slate-500 font-mono text-[10px] truncate">
-                    {activeUnits.join(" + ")} =
-                  </span>
-                  <span className={`font-bold ml-1 truncate ${isCurrentSpelling && activeSpellIndex === -1 ? "text-emerald-600 font-black" : "text-slate-900"}`}>
-                    {fullWord}
-                  </span>
+                  {/* Scrambled Available Tile Bank */}
+                  {assemblyAvailable.length > 0 && (
+                    <div>
+                      <div className="text-[9px] font-bold text-slate-500 mb-1 flex items-center space-x-1">
+                        <span>AVAILABLE SYLLABLES (TAP TO HEAR &amp; PLACE):</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {assemblyAvailable.map((tile) => (
+                          <button
+                            key={tile.id}
+                            type="button"
+                            onClick={() => handlePickAssemblyTile(tile)}
+                            className="group px-3 py-1.5 rounded-xl bg-white border-2 border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/50 text-slate-900 font-black text-base sm:text-lg shadow-2xs hover:shadow-xs transition-all active:scale-90 flex items-center space-x-1 cursor-pointer"
+                          >
+                            <span>{tile.char}</span>
+                            <Volume1 className="w-3 h-3 text-slate-400 group-hover:text-indigo-600" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                /* Standard Syllable Breakdown and Spelling Formula View */
+                <>
+                  {/* Syllables / Letters Breakdown with dedicated audio button for each individual letter */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {activeUnits.map((unit, uIdx, arr) => {
+                      const isUnitLit = isCurrentSpelling && activeSpellIndex === uIdx;
+                      return (
+                        <React.Fragment key={uIdx}>
+                          <div
+                            className={`group relative inline-flex items-center space-x-1 rounded-lg px-2 py-1 transition-all border shadow-2xs select-none ${
+                              isUnitLit
+                                ? "bg-emerald-600 border-emerald-600 text-white scale-105 shadow-md ring-2 ring-emerald-300"
+                                : "bg-white border-slate-300 text-slate-900 hover:border-slate-400 hover:shadow-xs"
+                            }`}
+                          >
+                            <span className={`text-sm sm:text-base font-black leading-none ${isUnitLit ? "text-white" : "text-slate-900"}`}>
+                              {unit}
+                            </span>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    playSpellSequence(
-                      cardId,
-                      activeUnits,
-                      fullWord,
-                      isEnglishMode ? "en" : "ta"
-                    )
-                  }
-                  title="Pronounce each letter one-by-one then the whole word"
-                  className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all active:scale-95 shadow-xs ${
-                    isCurrentSpelling
-                      ? "bg-amber-600 text-white hover:bg-amber-700 ring-2 ring-amber-300"
-                      : "bg-slate-900 text-white hover:bg-slate-800"
-                  }`}
-                >
-                  <Volume2 className={`w-3.5 h-3.5 ${isCurrentSpelling ? "animate-pulse text-amber-200" : ""}`} />
-                  <span>{isCurrentSpelling ? "Stop" : "Spell & Pronounce"}</span>
-                </button>
-              </div>
+                            {/* Individual letter audio button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                speakSyllable(unit, isEnglishMode ? "en" : "ta");
+                              }}
+                              title={`Listen to letter sound: ${unit}`}
+                              className={`p-0.5 rounded transition-transform active:scale-90 ${
+                                isUnitLit
+                                  ? "text-white hover:bg-emerald-700"
+                                  : "text-slate-400 hover:text-emerald-600 hover:bg-slate-100"
+                              }`}
+                            >
+                              <Volume2 className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {uIdx < arr.length - 1 && (
+                            <span className="text-xs font-black text-slate-400 select-none">+</span>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+
+                  {/* Syllable Word Formula, Syllable Assembly Game trigger & Sequential "Spell & Pronounce" */}
+                  <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg p-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center space-x-1 truncate max-w-[160px] sm:max-w-[210px]">
+                      <span className="text-slate-500 font-mono text-[10px] truncate">
+                        {activeUnits.join(" + ")} =
+                      </span>
+                      <span className={`font-bold ml-1 truncate ${isCurrentSpelling && activeSpellIndex === -1 ? "text-emerald-600 font-black" : "text-slate-900"}`}>
+                        {fullWord}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      {/* Syllable Assembly Game Button */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          startAssemblyGame(
+                            cardId,
+                            activeUnits,
+                            fullWord,
+                            isEnglishMode ? "en" : "ta"
+                          )
+                        }
+                        title="Play interactive Syllable Assembly Game for this word"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all active:scale-95 shadow-2xs"
+                      >
+                        <Puzzle className="w-3 h-3 text-indigo-600" />
+                        <span>Assemble</span>
+                      </button>
+
+                      {/* Spell & Pronounce Button */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          playSpellSequence(
+                            cardId,
+                            activeUnits,
+                            fullWord,
+                            isEnglishMode ? "en" : "ta"
+                          )
+                        }
+                        title="Pronounce each letter one-by-one then the whole word"
+                        className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all active:scale-95 shadow-xs ${
+                          isCurrentSpelling
+                            ? "bg-amber-600 text-white hover:bg-amber-700 ring-2 ring-amber-300"
+                            : "bg-slate-900 text-white hover:bg-slate-800"
+                        }`}
+                      >
+                        <Volume2 className={`w-3.5 h-3.5 ${isCurrentSpelling ? "animate-pulse text-amber-200" : ""}`} />
+                        <span>{isCurrentSpelling ? "Stop" : "Spell & Pronounce"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           );
         })()}
@@ -2202,10 +2522,25 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* Interaction Hint */}
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium text-center">
-                        💡 Swipe card left/right or use <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">←</kbd> / <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">→</kbd> keyboard arrows
-                      </p>
+                      {/* Slow Motion Speed Toggle & Interaction Hints */}
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsSlowAudio((prev) => !prev)}
+                          title={isSlowAudio ? "Slow Motion ON (0.65x). Tap for Normal Speed (1.0x)" : "Tap to activate Slow Motion (0.65x) pronunciation for extra clarity"}
+                          className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all shadow-2xs active:scale-95 ${
+                            isSlowAudio
+                              ? "bg-amber-100 text-amber-950 border-amber-300 ring-2 ring-amber-300 shadow-xs"
+                              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                          }`}
+                        >
+                          <span>{isSlowAudio ? "🐢 Slow Motion (0.65x) Active" : "🐰 Speed: Normal (1.0x)"}</span>
+                        </button>
+
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium text-center">
+                          💡 Swipe card left/right or use <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">←</kbd> / <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-slate-700">→</kbd> keyboard arrows
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
