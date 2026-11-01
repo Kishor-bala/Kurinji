@@ -30,9 +30,11 @@ import {
   X,
   FolderPlus,
   Puzzle,
+  GraduationCap,
 } from "lucide-react";
 import KurinjiAITutor from "@/components/kurinji/KurinjiAITutor";
 import PackageBuilder, { CustomLanguagePackage } from "@/components/kurinji/PackageBuilder";
+import AssessmentCenter from "@/components/kurinji/AssessmentCenter";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -322,8 +324,8 @@ interface ChatMessage {
 }
 
 export default function Home() {
-  // Navigation tabs in left sidebar: tutor, learn, builder
-  const [activeTab, setActiveTab] = useState<"tutor" | "learn" | "builder">("tutor");
+  // Navigation tabs in left sidebar: tutor, learn, assessment, builder
+  const [activeTab, setActiveTab] = useState<"tutor" | "learn" | "assessment" | "builder">("tutor");
   const [selectedLang, setSelectedLang] = useState<string>("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -2014,7 +2016,30 @@ export default function Home() {
               <span className="font-semibold">Learn</span>
             </button>
 
-            {/* TAB 3: PACKAGE BUILDER */}
+            {/* TAB 3: ASSESSMENT (SYLLABLE WORD GAME & TEACHER PORTAL) */}
+            <button
+              onClick={() => {
+                setActiveTab("assessment");
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                activeTab === "assessment"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <GraduationCap className="w-4 h-4 shrink-0 text-indigo-400" />
+                <span className="font-semibold">Assessment</span>
+              </div>
+              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                Quiz
+              </span>
+            </button>
+
+            {/* TAB 4: PACKAGE BUILDER */}
             <button
               onClick={() => {
                 setActiveTab("builder");
@@ -2550,7 +2575,25 @@ export default function Home() {
         )}
 
         {/* =====================================================================
-            VIEW 3: PACKAGE BUILDER TAB (BUILD YOUR OWN MOTHER TONGUE PACKAGE)
+            VIEW 3: ASSESSMENT CENTER (SYLLABLE ASSEMBLY GAME & TEACHER PORTAL)
+            ===================================================================== */}
+        {activeTab === "assessment" && (
+          <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 flex flex-col">
+            <AssessmentCenter
+              vocabulary={vocabulary}
+              customPackages={customPackages}
+              playAudio={playAudio}
+              playTtsAudio={playTtsAudio}
+              speakSyllable={speakSyllable}
+              speakText={speakText}
+              isSlowAudio={isSlowAudio}
+              setIsSlowAudio={setIsSlowAudio}
+            />
+          </div>
+        )}
+
+        {/* =====================================================================
+            VIEW 4: PACKAGE BUILDER TAB (BUILD YOUR OWN MOTHER TONGUE PACKAGE)
             ===================================================================== */}
         {activeTab === "builder" && (
           <div className="flex-1 w-full h-full overflow-y-auto bg-slate-50 flex flex-col">
