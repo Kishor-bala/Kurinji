@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import vocabulary from "@/public/data/vocabulary.json";
 
+import { findBestVocabularyMatches, VocabRecord } from "@/lib/tutor-matcher";
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -27,17 +29,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    type VocabRecord = {
-      id: string;
-      external_word_id: string;
-      language_code: string;
-      language_name: string;
-      english_meaning: string;
-      tamil_meaning: string;
-      source_word?: string;
-      category?: string;
-      audio_assets?: Array<{ audio_url: string }>;
-    };
     const records = vocabulary as VocabRecord[];
 
     // 2. Groq Whisper Cloud STT
@@ -66,36 +57,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const q = (transcribedText || "").toLowerCase().trim();
-    const matched = records.filter(
-      (item) =>
-        (item.language_code === languageCode || languageCode === "all") &&
-        (q.includes(item.english_meaning.toLowerCase()) ||
-          q.includes(item.tamil_meaning.toLowerCase()) ||
-          (item.source_word && q.includes(item.source_word.toLowerCase())) ||
-          item.external_word_id.toLowerCase().includes(q))
-    );
-
+    // 3. Phonetic and dialect similarity matching across full vocabulary
+    const matchResults = findBestVocabularyMatches(transcribedText, languageCode, records, 5);
+    const matched = matchResults.map((r) => r.record);
     const first = matched[0];
+
     let tutorMessage = "";
 
-    // Generate intelligent AI tutor response using Groq
+    // 4. Generate intelligent AI tutor response using Groq LLM
     if (groqKey && transcribedText) {
       try {
-        const vocabContext = matched
-          .slice(0, 5)
+        const vocabContext = matchResults
           .map(
-            (v) =>
-              `- ${v.english_meaning} (${v.tamil_meaning}) = Oral: ${v.source_word || "spoken"} [${v.external_word_id}]`
+            (m) =>
+              `- Concept: "${m.record.english_meaning}", Tamil: "${m.record.tamil_meaning}", Phonetics: "${m.record.tamil_phonetics || m.record.tamil_syllables || ''}", Oral Variant: "${m.record.source_word || m.matchedPhonetic}" (Match: ${Math.round(m.score * 100)}%)`
           )
           .join("\n");
 
-        const prompt = `You are Kurinji AI, a warm and pedagogical heritage language tutor for Badaga and Marwari.
+        const prompt = `You are Kurinji AI, a premier heritage language tutor for Badaga and Marwari.
 User spoke via microphone: "${transcribedText}".
-Relevant verified canonical records:
+Verified phonetic and lexical matches from the dataset:
 ${vocabContext || "No exact keyword match in verified database."}
 
-Provide a concise, encouraging 2-3 sentence answer explaining the word/concept, its Tamil meaning, and how to pronounce it in ${languageCode === "marwari" ? "Marwari" : "Badaga"}.`;
+INSTRUCTION:
+Even if the speaker's pronunciation is an oral dialect variation (such as "taale", "thale", "talæ", "tale" for "head" / "தலை"), directly recognize it as the corresponding Badaga heritage word!
+1. Directly state the Badaga word and English meaning: e.g. "**Head** in Badaga is **Thale / Taale** (Tamil: **தலை**)".
+2. Note that their pronunciation ("${transcribedText}") corresponds to this term.
+3. Provide simple phonetics: e.g. "tha-lay".
+Keep it friendly, accurate, and concise (2-3 sentences max).`;
 
         let chatRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
@@ -108,11 +97,12 @@ Provide a concise, encouraging 2-3 sentence answer explaining the word/concept, 
             messages: [
               {
                 role: "system",
-                content: "You are an expert Badaga & Marwari heritage language tutor. Keep replies warm, clear, and educational.",
+                content:
+                  "You are an expert Badaga & Marwari heritage language tutor. Always recognize oral dialect variations like thale/taale for head.",
               },
               { role: "user", content: prompt },
             ],
-            temperature: 0.3,
+            temperature: 0.2,
             max_tokens: 280,
           }),
         });
@@ -129,11 +119,12 @@ Provide a concise, encouraging 2-3 sentence answer explaining the word/concept, 
               messages: [
                 {
                   role: "system",
-                  content: "You are an expert Badaga & Marwari heritage language tutor. Keep replies warm, clear, and educational.",
+                  content:
+                    "You are an expert Badaga & Marwari heritage language tutor. Always recognize oral dialect variations like thale/taale for head.",
                 },
                 { role: "user", content: prompt },
               ],
-              temperature: 0.3,
+              temperature: 0.2,
               max_tokens: 280,
             }),
           });
@@ -149,9 +140,12 @@ Provide a concise, encouraging 2-3 sentence answer explaining the word/concept, 
     }
 
     if (!tutorMessage) {
-      tutorMessage = first
-        ? `In ${first.language_name}, "${first.english_meaning}" is "${first.tamil_meaning}" in Tamil, pronounced as "${first.source_word || first.english_meaning}".`
-        : `I heard: "${transcribedText || "your voice input"}". Let's explore more heritage words in Badaga and Marwari together!`;
+      if (first) {
+        const phon = first.tamil_phonetics?.replace(/\+/g, "").trim() || first.source_word || "thale";
+        tutorMessage = `**${first.english_meaning}** in ${first.language_name} is spoken as **${phon}** (Tamil: **${first.tamil_meaning}**). Your spoken input "${transcribedText}" closely matches this Badaga heritage word!`;
+      } else {
+        tutorMessage = `I heard: "${transcribedText || "your voice input"}". Let's explore more heritage words in Badaga!`;
+      }
     }
 
     const responseTtsUrl = `/api/v1/vocabulary/tts/synthesize?text=${encodeURIComponent(
