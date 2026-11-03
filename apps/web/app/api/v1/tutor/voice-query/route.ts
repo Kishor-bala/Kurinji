@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const records = vocabulary as VocabRecord[];
 
-    // 2. Groq Whisper Cloud STT
+    // 2. Groq Whisper Cloud STT with Domain & Language Biasing
     const groqKey = process.env.GROQ_API_KEY;
     let transcribedText = "";
 
@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
         groqForm.append("file", file, "audio.wav");
         groqForm.append("model", "whisper-large-v3-turbo");
         groqForm.append("response_format", "json");
+        // Bias Whisper towards Tamil, English, Thanglish, Badaglish & Marwarish vocabulary
+        groqForm.append(
+          "prompt",
+          "Badaga, Marwari, Tamil, Thanglish, Badaglish, Neeru, Thale, Kannu, Moogu, Baayi, Kaalu, Agalu, Thanni, Thala, Water, Eye, Nose, Mouth, Hand, Leg, Milk, Tree, Haalu, Mara, Mane, Avve, Appa, Hallu, Paani, Matho, Aankh, Naak"
+        );
 
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
@@ -57,34 +62,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Phonetic and dialect similarity matching across full vocabulary
+    // 3. Phonetic and acoustic tone similarity matching across filtered vocabulary
     const matchResults = findBestVocabularyMatches(transcribedText, languageCode, records, 5);
     const matched = matchResults.map((r) => r.record);
     const first = matched[0];
+    const targetLangName = languageCode === "all" ? "Badaga & Marwari" : (languageCode === "marwari" ? "Marwari" : "Badaga");
 
     let tutorMessage = "";
 
-    // 4. Generate intelligent AI tutor response using Groq LLM
-    if (groqKey && transcribedText) {
+    // 4. Generate structured grounded response using Groq LLM
+    if (groqKey && transcribedText && first) {
       try {
         const vocabContext = matchResults
           .map(
             (m) =>
-              `- Concept: "${m.record.english_meaning}", Tamil: "${m.record.tamil_meaning}", Phonetics: "${m.record.tamil_phonetics || m.record.tamil_syllables || ''}", Oral Variant: "${m.record.source_word || m.matchedPhonetic}" (Match: ${Math.round(m.score * 100)}%)`
+              `- ${m.record.language_name} Term: "${m.record.source_word || m.record.latin_word || m.record.english_meaning}" | English: "${m.record.english_meaning}" | Tamil: "${m.record.tamil_meaning}" | Phonetics: "${m.record.tamil_phonetics || ''}"`
           )
           .join("\n");
 
-        const prompt = `You are Kurinji AI, a premier heritage language tutor for Badaga and Marwari.
-User spoke via microphone: "${transcribedText}".
-Verified phonetic and lexical matches from the dataset:
-${vocabContext || "No exact keyword match in verified database."}
+        const prompt = `You are Kurinji AI, a focused heritage language tutor for ${targetLangName}.
+User voice input: "${transcribedText}".
+Verified matches from database:
+${vocabContext}
 
-INSTRUCTION:
-Even if the speaker's pronunciation is an oral dialect variation (such as "taale", "thale", "talæ", "tale" for "head" / "தலை"), directly recognize it as the corresponding Badaga heritage word!
-1. Directly state the Badaga word and English meaning: e.g. "**Head** in Badaga is **Thale / Taale** (Tamil: **தலை**)".
-2. Note that their pronunciation ("${transcribedText}") corresponds to this term.
-3. Provide simple phonetics: e.g. "tha-lay".
-Keep it friendly, accurate, and concise (2-3 sentences max).`;
+CRITICAL RULES:
+1. Always start directly with the matched pair in format:
+**${first.source_word || first.latin_word || first.english_meaning} (${first.english_meaning})**
+2. Explain the word in ${first.language_name} and give Tamil script: (Tamil: **${first.tamil_meaning}**).
+3. If user said a variation like "thanni", "water", "niru", "neru", "taale", note that it corresponds to this heritage word.
+4. Keep the entire response under 2 concise, supportive sentences. Do not hallucinate.`;
 
         let chatRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
@@ -98,12 +104,12 @@ Keep it friendly, accurate, and concise (2-3 sentences max).`;
               {
                 role: "system",
                 content:
-                  "You are an expert Badaga & Marwari heritage language tutor. Always recognize oral dialect variations like thale/taale for head.",
+                  `You are an expert ${targetLangName} heritage language tutor. Keep replies grounded in verified vocabulary with format: word (meaning).`,
               },
               { role: "user", content: prompt },
             ],
             temperature: 0.2,
-            max_tokens: 280,
+            max_tokens: 250,
           }),
         });
 
@@ -120,12 +126,12 @@ Keep it friendly, accurate, and concise (2-3 sentences max).`;
                 {
                   role: "system",
                   content:
-                    "You are an expert Badaga & Marwari heritage language tutor. Always recognize oral dialect variations like thale/taale for head.",
+                    `You are an expert ${targetLangName} heritage language tutor. Keep replies grounded in verified vocabulary with format: word (meaning).`,
                 },
                 { role: "user", content: prompt },
               ],
               temperature: 0.2,
-              max_tokens: 280,
+              max_tokens: 250,
             }),
           });
         }
@@ -141,10 +147,10 @@ Keep it friendly, accurate, and concise (2-3 sentences max).`;
 
     if (!tutorMessage) {
       if (first) {
-        const phon = first.tamil_phonetics?.replace(/\+/g, "").trim() || first.source_word || "thale";
-        tutorMessage = `**${first.english_meaning}** in ${first.language_name} is spoken as **${phon}** (Tamil: **${first.tamil_meaning}**). Your spoken input "${transcribedText}" closely matches this Badaga heritage word!`;
+        const latin = first.source_word || first.latin_word || first.english_meaning;
+        tutorMessage = `**${latin} (${first.english_meaning})**\nIn ${first.language_name}, "${first.english_meaning}" is expressed as **${latin}** (Tamil: **${first.tamil_meaning}**). Your query "${transcribedText}" matches this heritage term.`;
       } else {
-        tutorMessage = `I heard: "${transcribedText || "your voice input"}". Let's explore more heritage words in Badaga!`;
+        tutorMessage = `Kurinji AI is focused on ${targetLangName} heritage vocabulary. Please ask about words like "neeru" (water), "thanni", "kannu" (eye), or "thale" (head)!`;
       }
     }
 

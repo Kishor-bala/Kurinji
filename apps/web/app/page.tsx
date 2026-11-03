@@ -2145,8 +2145,8 @@ export default function Home() {
         {activeTab === "tutor" && (
           <div className="flex-1 w-full h-full overflow-hidden">
             <KurinjiAITutor
-              initialLanguage={selectedLang === "marwari" ? "Marwari" : "Badaga"}
-              onLanguageChange={(lang) => setSelectedLang(lang.toLowerCase() as "badaga" | "marwari")}
+              initialLanguage={selectedLang === "marwari" ? "Marwari" : (selectedLang === "badaga" ? "Badaga" : "All")}
+              onLanguageChange={(lang) => setSelectedLang(lang.toLowerCase())}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               isSidebarOpen={isSidebarOpen}
             />

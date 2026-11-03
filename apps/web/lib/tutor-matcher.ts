@@ -1,4 +1,4 @@
-// Universal Phonetic & Dialect Similarity Matcher for All Badaga & Marwari Vocabulary
+// Universal Phonetic, Acoustic & Dialect Matcher for Badaga & Marwari Heritage Vocabulary
 
 export interface VocabRecord {
   id: string;
@@ -10,6 +10,7 @@ export interface VocabRecord {
   tamil_syllables?: string;
   tamil_phonetics?: string;
   source_word?: string | null;
+  latin_word?: string | null;
   category?: string;
   audio_assets?: Array<{ audio_url: string; filename?: string }>;
 }
@@ -94,6 +95,19 @@ export function normalizePhonetic(raw: string): string {
   return s;
 }
 
+/**
+ * Consonant skeleton for noisy / acoustic tone prediction.
+ * Collapses vowels and approximates sounds so:
+ * "neeru", "niru", "neru", "naru", "nara", "nera" all become "nr"
+ * "thale", "taale", "tala", "tale", "thala" all become "tl"
+ * "kannu", "kan", "kenu", "kina" all become "kn"
+ */
+export function getConsonantSkeleton(raw: string): string {
+  if (!raw) return "";
+  const s = normalizePhonetic(raw);
+  return s.replace(/[aeiou]/g, "");
+}
+
 export function levenshteinDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (a.length === 0) return b.length;
@@ -128,7 +142,14 @@ export function phoneticSimilarity(a: string, b: string): number {
   const nb = normalizePhonetic(b);
   if (!na || !nb) return 0;
   if (na === nb) return 1.0;
-  if (na.includes(nb) || nb.includes(na)) return 0.88;
+  if (na.includes(nb) || nb.includes(na)) return 0.90;
+
+  // Check acoustic tone / consonant skeleton (e.g. niru vs neeru, neru vs neeru)
+  const sa = getConsonantSkeleton(a);
+  const sb = getConsonantSkeleton(b);
+  if (sa && sb && sa === sb && Math.abs(na.length - nb.length) <= 2) {
+    return 0.92;
+  }
 
   const dist = levenshteinDistance(na, nb);
   const maxLen = Math.max(na.length, nb.length);
@@ -136,57 +157,93 @@ export function phoneticSimilarity(a: string, b: string): number {
   return Math.max(0, ratio);
 }
 
-// Broad heritage mappings for prominent Badaga vocabulary
-const BADAGA_HERITAGE_VARIANTS: Record<string, string[]> = {
-  head: ["thale", "taale", "tale", "mandhe", "mande", "talæ", "talai"],
-  eye: ["kannu", "kan", "kann", "kanni"],
-  eyes: ["kannu", "kan", "kann"],
-  nose: ["moogu", "mooku", "mookku", "mugu"],
-  mouth: ["baayi", "bayi", "bay", "vaai"],
-  ear: ["kivi", "kivvi", "sevi", "kevi"],
-  ears: ["kivi", "kivvi", "sevi"],
-  hand: ["kayyi", "kai", "kay", "key"],
-  hands: ["kayyi", "kai", "kay"],
-  leg: ["kaalu", "kaal", "kalu"],
-  legs: ["kaalu", "kaal", "kalu"],
-  tooth: ["hallu", "pallu", "pal"],
-  teeth: ["hallu", "pallu", "pal"],
-  tongue: ["naalange", "naakku", "naku"],
-  hair: ["koondalu", "mudhi", "mayire"],
-  stomach: ["hotte", "potte", "vayiru"],
-  water: ["neeru", "neer", "tanni", "neru"],
-  milk: ["haalu", "paalu", "halu", "palu"],
-  tree: ["mara", "maram", "maro"],
-  sun: ["hottu", "sooriyan", "soorya", "nerupu"],
-  moon: ["tingalu", "chandiran", "nila"],
-  house: ["mane", "veedu", "mann"],
-  village: ["hatti", "oor", "ooru"],
-  mother: ["avve", "amma", "thaai", "aye"],
-  father: ["appa", "thande", "bappa"],
-  brother: ["anna", "thambi", "dhodda"],
-  sister: ["akka", "thangai"],
-  food: ["oota", "saapadu", "thindi"],
-  dog: ["naayi", "nayi"],
-  cat: ["bekku", "poonai"],
-  cow: ["aavu", "maadu", "dana"],
-  tiger: ["huli", "puli"],
-  bird: ["hakki", "paravai"],
-  flower: ["hoovu", "poovu", "poo"],
-  one: ["ondu", "onnu"],
-  two: ["eradu", "rendu"],
-  three: ["mooru", "moonu"],
-  four: ["naaku", "naalu"],
-  five: ["aidhu", "anju"],
-  six: ["aaru"],
-  seven: ["yelu", "ezhu"],
-  eight: ["entu", "ettu"],
-  nine: ["ombathu"],
-  ten: ["hathu", "pathu"],
+// Broad cross-lingual aliases (Tamil, Thanglish, English, dialect)
+export const CROSS_LINGUAL_ALIASES: Record<string, { badaga: string; marwari: string; english: string }> = {
+  thanni: { badaga: "neeru", marwari: "paani", english: "water" },
+  tanni: { badaga: "neeru", marwari: "paani", english: "water" },
+  water: { badaga: "neeru", marwari: "paani", english: "water" },
+  neeru: { badaga: "neeru", marwari: "paani", english: "water" },
+  niru: { badaga: "neeru", marwari: "paani", english: "water" },
+  neru: { badaga: "neeru", marwari: "paani", english: "water" },
+  naru: { badaga: "neeru", marwari: "paani", english: "water" },
+  nara: { badaga: "neeru", marwari: "paani", english: "water" },
+  nera: { badaga: "neeru", marwari: "paani", english: "water" },
+  paani: { badaga: "neeru", marwari: "paani", english: "water" },
+  pani: { badaga: "neeru", marwari: "paani", english: "water" },
+  thala: { badaga: "thale", marwari: "matho", english: "head" },
+  thalai: { badaga: "thale", marwari: "matho", english: "head" },
+  thale: { badaga: "thale", marwari: "matho", english: "head" },
+  taale: { badaga: "thale", marwari: "matho", english: "head" },
+  matho: { badaga: "thale", marwari: "matho", english: "head" },
+  head: { badaga: "thale", marwari: "matho", english: "head" },
+  kann: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  kannu: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  kan: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  aankh: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  eye: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  eyes: { badaga: "kannu", marwari: "aankh", english: "eye" },
+  mookku: { badaga: "moogu", marwari: "naak", english: "nose" },
+  mooku: { badaga: "moogu", marwari: "naak", english: "nose" },
+  moogu: { badaga: "moogu", marwari: "naak", english: "nose" },
+  naak: { badaga: "moogu", marwari: "naak", english: "nose" },
+  nose: { badaga: "moogu", marwari: "naak", english: "nose" },
+  vaai: { badaga: "baayi", marwari: "mukh", english: "mouth" },
+  baayi: { badaga: "baayi", marwari: "mukh", english: "mouth" },
+  mukh: { badaga: "baayi", marwari: "mukh", english: "mouth" },
+  mouth: { badaga: "baayi", marwari: "mukh", english: "mouth" },
+  kaathu: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  sevi: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  kivi: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  kaan: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  ear: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  ears: { badaga: "kivi", marwari: "kaan", english: "ear" },
+  kai: { badaga: "kayyi", marwari: "haath", english: "hand" },
+  kayyi: { badaga: "kayyi", marwari: "haath", english: "hand" },
+  haath: { badaga: "kayyi", marwari: "haath", english: "hand" },
+  hand: { badaga: "kayyi", marwari: "haath", english: "hand" },
+  hands: { badaga: "kayyi", marwari: "haath", english: "hand" },
+  kaal: { badaga: "kaalu", marwari: "pag", english: "leg" },
+  kaalu: { badaga: "kaalu", marwari: "pag", english: "leg" },
+  pag: { badaga: "kaalu", marwari: "pag", english: "leg" },
+  leg: { badaga: "kaalu", marwari: "pag", english: "leg" },
+  legs: { badaga: "kaalu", marwari: "pag", english: "leg" },
+  pallu: { badaga: "hallu", marwari: "daant", english: "teeth" },
+  hallu: { badaga: "hallu", marwari: "daant", english: "teeth" },
+  daant: { badaga: "hallu", marwari: "daant", english: "teeth" },
+  teeth: { badaga: "hallu", marwari: "daant", english: "teeth" },
+  tooth: { badaga: "hallu", marwari: "daant", english: "teeth" },
+  mudi: { badaga: "koondalu", marwari: "baal", english: "hair" },
+  koondalu: { badaga: "koondalu", marwari: "baal", english: "hair" },
+  baal: { badaga: "koondalu", marwari: "baal", english: "hair" },
+  hair: { badaga: "koondalu", marwari: "baal", english: "hair" },
+  paal: { badaga: "haalu", marwari: "doodh", english: "milk" },
+  haalu: { badaga: "haalu", marwari: "doodh", english: "milk" },
+  doodh: { badaga: "haalu", marwari: "doodh", english: "milk" },
+  milk: { badaga: "haalu", marwari: "doodh", english: "milk" },
+  maram: { badaga: "mara", marwari: "rookh", english: "tree" },
+  mara: { badaga: "mara", marwari: "rookh", english: "tree" },
+  rookh: { badaga: "mara", marwari: "rookh", english: "tree" },
+  tree: { badaga: "mara", marwari: "rookh", english: "tree" },
+  veedu: { badaga: "mane", marwari: "ghar", english: "house" },
+  mane: { badaga: "mane", marwari: "ghar", english: "house" },
+  ghar: { badaga: "mane", marwari: "ghar", english: "house" },
+  house: { badaga: "mane", marwari: "ghar", english: "house" },
+  amma: { badaga: "avve", marwari: "Maa", english: "mother" },
+  avve: { badaga: "avve", marwari: "Maa", english: "mother" },
+  Maa: { badaga: "avve", marwari: "Maa", english: "mother" },
+  mother: { badaga: "avve", marwari: "Maa", english: "mother" },
+  appa: { badaga: "appa", marwari: "Bapu ji", english: "father" },
+  Bapuji: { badaga: "appa", marwari: "Bapu ji", english: "father" },
+  father: { badaga: "appa", marwari: "Bapu ji", english: "father" },
+  agalu: { badaga: "agalu", marwari: "chaudo", english: "wide" },
+  wide: { badaga: "agalu", marwari: "chaudo", english: "wide" },
+  broad: { badaga: "agalu", marwari: "chaudo", english: "broad" },
 };
 
 /**
  * Universal matcher for ANY word in the database.
- * Tests full phrases as well as individual tokens.
+ * Supports strict language filtering (badaga, marwari, all)
+ * and noise/tone-tolerant phonetic prediction.
  */
 export function findBestVocabularyMatches(
   query: string,
@@ -202,14 +259,30 @@ export function findBestVocabularyMatches(
   // Extract query tokens (ignoring stop words)
   const stopWords = new Set(["what", "is", "the", "in", "badaga", "marwari", "how", "to", "say", "tell", "me", "mean", "meaning", "for"]);
   const tokens = cleanQ
-    .split(/[\s,?.!]+/)
+    .split(/[\s,?.!+=]+/)
     .map((w) => w.trim())
-    .filter((w) => w.length > 1 && !stopWords.has(w));
+    .filter((w) => w.length > 0 && !stopWords.has(w));
 
   const results: MatchResult[] = [];
+  const normalizedLang = languageCode ? languageCode.toLowerCase() : "all";
+
+  // Check cross-lingual aliases first
+  let aliasTargetWord = "";
+  for (const token of [cleanQ, ...tokens]) {
+    const alias = CROSS_LINGUAL_ALIASES[token];
+    if (alias) {
+      if (normalizedLang === "marwari") {
+        aliasTargetWord = alias.marwari;
+      } else {
+        aliasTargetWord = alias.badaga;
+      }
+      break;
+    }
+  }
 
   for (const item of records) {
-    if (languageCode !== "all" && item.language_code !== languageCode) {
+    // Strict language filtering
+    if (normalizedLang !== "all" && item.language_code.toLowerCase() !== normalizedLang) {
       continue;
     }
 
@@ -219,11 +292,40 @@ export function findBestVocabularyMatches(
 
     const engMeaning = (item.english_meaning || "").toLowerCase();
     const tamMeaning = (item.tamil_meaning || "").toLowerCase();
-    const sourceWord = (item.source_word || "").toLowerCase();
+    const sourceWord = (item.source_word || item.latin_word || "").toLowerCase();
+    const latinWord = (item.latin_word || "").toLowerCase();
     const phonetics = (item.tamil_phonetics || "").toLowerCase();
     const syllables = (item.tamil_syllables || "").toLowerCase();
 
-    // 1. English concept match (full query and tokens)
+    // 0. Cross-lingual alias match (e.g. "thanni" -> matches Badaga "neeru")
+    if (aliasTargetWord) {
+      if (sourceWord === aliasTargetWord.toLowerCase() || latinWord === aliasTargetWord.toLowerCase()) {
+        bestScore = 1.0;
+        matchedField = "cross_lingual_alias";
+        matchedPhonetic = aliasTargetWord;
+      }
+    }
+
+    // 1. Latin Badaglish / Marwarish match (source_word or latin_word)
+    if (sourceWord || latinWord) {
+      const target = sourceWord || latinWord;
+      const sScore = phoneticSimilarity(cleanQ, target);
+      if (sScore > bestScore) {
+        bestScore = sScore;
+        matchedField = "latin_word";
+        matchedPhonetic = target;
+      }
+      for (const t of tokens) {
+        const tScore = phoneticSimilarity(t, target);
+        if (tScore > bestScore) {
+          bestScore = tScore;
+          matchedField = "latin_word_token";
+          matchedPhonetic = target;
+        }
+      }
+    }
+
+    // 2. English concept match
     if (cleanQ.includes(engMeaning) || engMeaning.includes(cleanQ)) {
       const score = engMeaning === cleanQ ? 1.0 : 0.94;
       if (score > bestScore) {
@@ -234,15 +336,15 @@ export function findBestVocabularyMatches(
     }
     for (const t of tokens) {
       if (t === engMeaning || engMeaning.split(/\s+/).includes(t)) {
-        if (0.92 > bestScore) {
-          bestScore = 0.92;
+        if (0.93 > bestScore) {
+          bestScore = 0.93;
           matchedField = "english_meaning_token";
           matchedPhonetic = engMeaning;
         }
       }
     }
 
-    // 2. Tamil meaning match
+    // 3. Tamil meaning match
     if (cleanQ.includes(tamMeaning) || tamMeaning.includes(cleanQ)) {
       const score = tamMeaning === cleanQ ? 1.0 : 0.92;
       if (score > bestScore) {
@@ -252,30 +354,9 @@ export function findBestVocabularyMatches(
       }
     }
 
-    // 3. Heritage variants dictionary (for common oral shifts)
-    const variants = BADAGA_HERITAGE_VARIANTS[engMeaning];
-    if (variants && variants.length > 0) {
-      for (const variant of variants) {
-        // Compare with full query
-        let vScore = phoneticSimilarity(cleanQ, variant);
-        // Compare with individual tokens
-        for (const t of tokens) {
-          const tScore = phoneticSimilarity(t, variant);
-          if (tScore > vScore) vScore = tScore;
-        }
-        if (vScore > bestScore) {
-          bestScore = vScore;
-          matchedField = "heritage_variant";
-          matchedPhonetic = variant;
-        }
-      }
-    }
-
-    // 4. Universal phonetics comparison for ANY word in dataset
+    // 4. Phonetics field
     if (phonetics) {
-      // Compare full query
       let pScore = phoneticSimilarity(cleanQ, phonetics);
-      // Compare tokens
       for (const t of tokens) {
         const tScore = phoneticSimilarity(t, phonetics);
         if (tScore > pScore) pScore = tScore;
@@ -287,7 +368,7 @@ export function findBestVocabularyMatches(
       }
     }
 
-    // 5. Syllables comparison for ANY word
+    // 5. Syllables field
     if (syllables) {
       const sScore = phoneticSimilarity(cleanQ, syllables.replace(/\+/g, ""));
       if (sScore > bestScore) {
@@ -297,21 +378,7 @@ export function findBestVocabularyMatches(
       }
     }
 
-    // 6. Source word comparison for ANY word
-    if (sourceWord) {
-      let swScore = phoneticSimilarity(cleanQ, sourceWord);
-      for (const t of tokens) {
-        const tScore = phoneticSimilarity(t, sourceWord);
-        if (tScore > swScore) swScore = tScore;
-      }
-      if (swScore > bestScore) {
-        bestScore = swScore;
-        matchedField = "source_word";
-        matchedPhonetic = sourceWord;
-      }
-    }
-
-    // 7. External word ID match (e.g. W0001)
+    // 6. External word ID match
     if (normQ && item.external_word_id.toLowerCase().includes(normQ)) {
       if (0.85 > bestScore) {
         bestScore = 0.85;

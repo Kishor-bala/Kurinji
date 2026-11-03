@@ -24,6 +24,7 @@ interface VerifiedVocabItem {
   language_code?: string;
   language_name?: string;
   source_word?: string;
+  latin_word?: string;
   tamil_meaning?: string;
   english_meaning?: string;
   audio_url?: string;
@@ -42,25 +43,40 @@ interface ChatMessage {
 }
 
 interface KurinjiAITutorProps {
-  initialLanguage?: "Badaga" | "Marwari";
-  onLanguageChange?: (lang: "Badaga" | "Marwari") => void;
+  initialLanguage?: "All" | "Badaga" | "Marwari";
+  onLanguageChange?: (lang: "All" | "Badaga" | "Marwari") => void;
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
 }
 
 const QUICK_PROMPTS: Record<string, string[]> = {
+  All: [
+    "neeru (water)",
+    "thanni",
+    "kannu (eye)",
+    "thale (head)",
+    "paani (water)",
+    "moogu (nose)",
+    "haath (hand)",
+  ],
   Badaga: [
-    "What is 'head' in Badaga?",
-    "How to say 'Eye' (கண்)?",
-    "Pronounce 'mandhe' and 'kannu'",
-    "Common body parts in Badaga",
-    "Family relations in Badaga",
+    "neeru (water)",
+    "thanni",
+    "thale (head)",
+    "kannu (eye)",
+    "moogu (nose)",
+    "baayi (mouth)",
+    "kaalu (leg)",
+    "hallu (teeth)",
   ],
   Marwari: [
-    "What is 'eye' in Marwari?",
-    "How to say 'mother' in Marwari?",
-    "Common Marwari daily greetings",
-    "Pronounce 'haath' and 'matho'",
+    "paani (water)",
+    "matho (head)",
+    "aankh (eye)",
+    "naak (nose)",
+    "haath (hand)",
+    "ghar (house)",
+    "Maa (mother)",
   ],
 };
 
@@ -70,12 +86,14 @@ export default function KurinjiAITutor({
   onToggleSidebar,
   isSidebarOpen = true,
 }: KurinjiAITutorProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<"Badaga" | "Marwari">(initialLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState<"All" | "Badaga" | "Marwari">(
+    initialLanguage === "Marwari" ? "Marwari" : (initialLanguage === "All" ? "All" : "Badaga")
+  );
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: "welcome_msg",
       role: "assistant",
-      content: `Namaskara! I am Kurinji AI, your personal teaching assistant for ${initialLanguage}. Ask me any vocabulary word, meaning in Tamil or English, or practice pronunciation. Tap the microphone below to talk to me!`,
+      content: `Namaskara! I am Kurinji AI, your personal indigenous language tutor. Speak or type in Badaga, Marwari, Tamil, or English (e.g. "neeru", "thanni", "water") to learn heritage words!`,
       timestamp: "Just now",
     },
   ]);
@@ -103,7 +121,7 @@ export default function KurinjiAITutor({
   }, [chatMessages, isLoadingResponse]);
 
   // Sync language selection
-  const handleLanguageChange = (lang: "Badaga" | "Marwari") => {
+  const handleLanguageChange = (lang: "All" | "Badaga" | "Marwari") => {
     setSelectedLanguage(lang);
     if (onLanguageChange) onLanguageChange(lang);
     setChatMessages((prev) => [
@@ -111,7 +129,10 @@ export default function KurinjiAITutor({
       {
         id: `lang_change_${Date.now()}`,
         role: "assistant",
-        content: `Switched focus to ${lang}. You can now speak or ask questions about ${lang} vocabulary, definitions, and phonetics!`,
+        content:
+          lang === "All"
+            ? "Switched focus to All Languages. You can now speak or ask questions about Badaga and Marwari heritage words!"
+            : `Switched focus to ${lang}. Searching and recognizing strictly ${lang} heritage vocabulary.`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
@@ -213,7 +234,7 @@ export default function KurinjiAITutor({
 
     const formData = new FormData();
     formData.append("file", blob, "query.webm");
-    formData.append("language_code", selectedLanguage.toLowerCase());
+    formData.append("language_code", selectedLanguage === "All" ? "all" : selectedLanguage.toLowerCase());
 
     try {
       const res = await fetch("/api/v1/tutor/voice-query", {
@@ -301,7 +322,7 @@ export default function KurinjiAITutor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: query,
-          language_code: selectedLanguage.toLowerCase(),
+          language_code: selectedLanguage === "All" ? "all" : selectedLanguage.toLowerCase(),
         }),
       });
 
@@ -384,6 +405,17 @@ export default function KurinjiAITutor({
           <div className="inline-flex p-0.5 sm:p-1 rounded-xl bg-slate-100 border border-slate-200 shadow-inner">
             <button
               type="button"
+              onClick={() => handleLanguageChange("All")}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                selectedLanguage === "All"
+                  ? "bg-white text-slate-900 shadow-xs ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              All Languages
+            </button>
+            <button
+              type="button"
               onClick={() => handleLanguageChange("Badaga")}
               className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                 selectedLanguage === "Badaga"
@@ -464,11 +496,14 @@ export default function KurinjiAITutor({
                             className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 shadow-2xs hover:bg-slate-100 transition-colors"
                           >
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-900 truncate">
-                                {v.source_word || v.tamil_meaning}
+                              <p className="text-xs font-black text-slate-900 truncate flex items-center space-x-1.5">
+                                <span>{v.latin_word || v.source_word || v.tamil_meaning}</span>
+                                <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                  ({v.english_meaning})
+                                </span>
                               </p>
                               <p className="text-[10px] text-slate-500 truncate">
-                                {v.tamil_meaning} &bull; {v.english_meaning}
+                                Tamil: <strong className="text-slate-700">{v.tamil_meaning}</strong> &bull; {v.language_name}
                               </p>
                             </div>
 
